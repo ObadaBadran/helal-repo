@@ -1,4 +1,6 @@
 <?php
+
+use App\Http\Controllers\VideoChatController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 
@@ -11,4 +13,10 @@ Route::middleware('auth:api')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('send-otp', [AuthController::class, 'sendOtp']);
     Route::post('verify-otp', [AuthController::class, 'verifyOtpAndChangePassword']);
+});
+
+
+Route::middleware('auth:api')->group(function () {
+    Route::post('/call-user', [VideoChatController::class, 'callUser']);
+    Route::post('/accept-call', [VideoChatController::class, 'acceptCall']);
 });
