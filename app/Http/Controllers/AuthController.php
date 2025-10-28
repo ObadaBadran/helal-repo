@@ -119,10 +119,38 @@ class AuthController extends Controller
     }
 
     // التحقق من OTP وتغيير كلمة المرور
-    public function verifyOtpAndChangePassword(Request $request)
+    public function verifyOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'otp' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
+        }
+
+        // 🔍 ابحث عن الـ OTP
+        $otpRecord = PasswordOtp::where('otp', $request->otp)->first();
+
+        if (!$otpRecord) {
+            return response()->json(['status'=>'error','message'=>'Invalid OTP.'], 400);
+        }
+
+        if (Carbon::now()->greaterThan($otpRecord->expires_at)) {
+            return response()->json(['status'=>'error','message'=>'OTP expired.'], 400);
+        }
+
+        // ✅ علم أن المستخدم تحقق من الـ OTP
+        $user = $otpRecord->user;
+        $user->otp_verified = true;
+        $user->save();
+
+        return response()->json(['status'=>'success','message'=>'OTP verified successfully.']);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
             'new_password' => [
                 'required',
                 'string',
@@ -136,28 +164,22 @@ class AuthController extends Controller
             return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
         }
 
-        $record = PasswordOtp::where('otp', $request->otp)->first();
+        $user = auth()->user();
 
-        if (!$record) {
-            return response()->json(['status'=>'error','message'=>'Invalid OTP.'], 400);
-        }
-
-        if (Carbon::now()->greaterThan($record->expires_at)) {
-            return response()->json(['status'=>'error','message'=>'OTP has expired.'], 400);
-        }
-
-        $user = User::find($record->user_id);
         if (!$user) {
-            return response()->json(['status'=>'error','message'=>'User not found for this OTP.'], 404);
+            return response()->json(['status'=>'error','message'=>'User not authenticated.'], 401);
+        }
+
+        if (!$user->otp_verified) {
+            return response()->json(['status'=>'error','message'=>'OTP verification required.'], 403);
         }
 
         $user->update([
             'password' => Hash::make($request->new_password),
+            'otp_verified' => false, // إعادة التعيين بعد التغيير
         ]);
 
-        $record->delete();
-
-        return response()->json(['status'=>'success','message'=>'Password changed successfully.'], 200);
+        return response()->json(['status'=>'success','message'=>'Password reset successfully.'], 200);
     }
 
     // دالة مساعدة لإرجاع JWT
