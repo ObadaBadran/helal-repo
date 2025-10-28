@@ -4,17 +4,16 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class StartVideoChat implements ShouldBroadcast
+class VideoSignal implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $data; // البيانات التي ترسل للفرونت
+    public $data;
 
     public function __construct($data)
     {
@@ -23,16 +22,15 @@ class StartVideoChat implements ShouldBroadcast
 
    /* public function broadcastOn()
     {
-        return new PresenceChannel('presence-video-channel'); // أو PrivateChannel حسب حاجتك
+        return new PrivateChannel('video-room.' . $this->data['room_id']);
     }*/
     public function broadcastOn()
     {
-        // قناة خاصة بالبث الجماعي
-        return new PresenceChannel('video-room.' . $this->data['room_id']);
+        return new Channel('video-room'); // قناة عامة للتجربة
     }
 
     public function broadcastAs()
     {
-        return 'start-video-chat';
+        return 'video-signal';
     }
 }

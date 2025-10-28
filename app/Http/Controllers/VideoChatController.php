@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Events\StartVideoChat;
+use App\Events\VideoSignal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class VideoChatController extends Controller
 {
+    // إرسال دعوة لمستخدم واحد (optional إذا تريد private call)
     public function callUser(Request $request)
     {
         $data = [
@@ -22,6 +24,7 @@ class VideoChatController extends Controller
         return response()->json(['message' => 'Call initiated']);
     }
 
+    // قبول الدعوة لمستخدم واحد (optional إذا تريد private call)
     public function acceptCall(Request $request)
     {
         $data = [
@@ -33,5 +36,35 @@ class VideoChatController extends Controller
         event(new StartVideoChat($data));
 
         return response()->json(['message' => 'Call accepted']);
+    }
+
+    // بدء بث جماعي (multi-user)
+    public function start(Request $request)
+    {
+        $roomId = $request->room_id; // معرف البث الفريد
+        $data = [
+            'room_id' => $roomId,
+            'from' => Auth::id(),
+            'type' => 'call'
+        ];
+
+        event(new StartVideoChat($data));
+
+        return response()->json(['message' => 'Broadcast started', 'room_id' => $roomId]);
+    }
+
+    // إرسال signal data لكل المشاركين في البث
+    public function signal(Request $request)
+    {
+        $data = [
+            'from' => Auth::id(),
+            'signal' => $request->signal,
+            'room_id' => $request->room_id,
+        ];
+
+        // VideoSignal Event يجب أن تنشئه بنفس طريقة StartVideoChat
+        event(new VideoSignal($data));
+
+        return response()->json(['message' => 'Signal sent']);
     }
 }

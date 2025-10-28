@@ -21,4 +21,8 @@ Route::middleware('auth:api')->group(function () {
 Route::middleware('auth:api')->group(function () {
     Route::post('/call-user', [VideoChatController::class, 'callUser']);
     Route::post('/accept-call', [VideoChatController::class, 'acceptCall']);
+
+    // بث جماعي
+    Route::post('/broadcast/start', [VideoChatController::class, 'start']);
+    Route::post('/broadcast/signal', [VideoChatController::class, 'signal']);
 });
