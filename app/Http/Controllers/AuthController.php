@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Exception;
 
 class AuthController extends Controller
 {
@@ -43,7 +44,6 @@ class AuthController extends Controller
         }
 
         $imagePath = null;
-
         if ($request->hasFile('profile_image')) {
             $imagePath = $request->file('profile_image')->store('profile_images', 'public');
         }
@@ -72,8 +72,8 @@ class AuthController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
-        if (!$token = auth()->attempt($credentials)) {
-            return response()->json(['status'=>'error', 'message' => 'Invalid credentials'], 401);
+        if (!$token = JWTAuth::attempt($credentials)) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
         }
 
         return $this->respondWithToken($token);
@@ -82,14 +82,23 @@ class AuthController extends Controller
     // عرض بيانات المستخدم الحالي
     public function me()
     {
-        return response()->json(auth()->user());
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+            return response()->json(['status' => 'success', 'user' => $user]);
+        } catch (Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Token invalid or expired'], 401);
+        }
     }
 
     // تسجيل الخروج
     public function logout()
     {
-        auth()->logout();
-        return response()->json(['status'=>'success', 'message' => 'Successfully logged out']);
+        try {
+            JWTAuth::invalidate(JWTAuth::getToken());
+            return response()->json(['status' => 'success', 'message' => 'Successfully logged out']);
+        } catch (Exception $e) {
+            return response()->json(['status' => 'error', 'message' => 'Failed to logout'], 500);
+        }
     }
 
     // إرسال OTP للبريد
@@ -104,9 +113,8 @@ class AuthController extends Controller
         }
 
         $user = User::where('email', $request->email)->first();
-
         if (!$user) {
-            return response()->json(['status'=>'error', 'message' => 'User not found.'], 404);
+            return response()->json(['status'=>'error','message'=>'User not found.'], 404);
         }
 
         $otp = rand(100000, 999999);
@@ -122,13 +130,10 @@ class AuthController extends Controller
 
         Mail::to($user->email)->send(new OtpMail($otp));
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'OTP has been sent to your email.'
-        ], 200);
+        return response()->json(['status'=>'success','message'=>'OTP has been sent to your email.'], 200);
     }
 
-    // التحقق من OTP وتغيير كلمة المرور
+    // التحقق من OTP
     public function verifyOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -139,18 +144,13 @@ class AuthController extends Controller
             return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
         }
 
-        // 🔍 ابحث عن الـ OTP
         $otpRecord = PasswordOtp::where('otp', $request->otp)->first();
-
-        if (!$otpRecord) {
-            return response()->json(['status'=>'error','message'=>'Invalid OTP.'], 400);
-        }
+        if (!$otpRecord) return response()->json(['status'=>'error','message'=>'Invalid OTP.'], 400);
 
         if (Carbon::now()->greaterThan($otpRecord->expires_at)) {
             return response()->json(['status'=>'error','message'=>'OTP expired.'], 400);
         }
 
-        // ✅ علم أن المستخدم تحقق من الـ OTP
         $user = $otpRecord->user;
         $user->otp_verified = true;
         $user->save();
@@ -158,6 +158,7 @@ class AuthController extends Controller
         return response()->json(['status'=>'success','message'=>'OTP verified successfully.']);
     }
 
+    // إعادة تعيين كلمة المرور بعد OTP
     public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -174,9 +175,9 @@ class AuthController extends Controller
             return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
         }
 
-        $user = auth()->user();
-
-        if (!$user) {
+        try {
+            $user = JWTAuth::parseToken()->authenticate();
+        } catch (Exception $e) {
             return response()->json(['status'=>'error','message'=>'User not authenticated.'], 401);
         }
 
@@ -186,23 +187,13 @@ class AuthController extends Controller
 
         $user->update([
             'password' => Hash::make($request->new_password),
-            'otp_verified' => false, // إعادة التعيين بعد التغيير
+            'otp_verified' => false
         ]);
 
-        return response()->json(['status'=>'success','message'=>'Password reset successfully.'], 200);
+        return response()->json(['status'=>'success','message'=>'Password reset successfully.']);
     }
 
-    // دالة مساعدة لإرجاع JWT
-    protected function respondWithToken($token)
-    {
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'bearer',
-            'expires_in' => auth()->factory()->getTTL() * 60,
-            'user' => auth()->user()
-        ]);
-    }
-
+    // تغيير كلمة المرور أثناء تسجيل الدخول
     public function changePassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -220,33 +211,20 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $validator->errors()
-            ], 422);
+            return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
         }
 
-        $user = auth()->user();
-
-
+        $user = JWTAuth::parseToken()->authenticate();
         if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Current password is incorrect.'
-            ], 401);
+            return response()->json(['status'=>'error','message'=>'Current password is incorrect.'], 401);
         }
 
+        $user->update(['password' => Hash::make($request->new_password)]);
 
-        $user->update([
-            'password' => Hash::make($request->new_password),
-        ]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Password changed successfully.'
-        ], 200);
+        return response()->json(['status'=>'success','message'=>'Password changed successfully.']);
     }
 
+    // تحديث الصورة الشخصية
     public function updateProfileImage(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -254,12 +232,11 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+            return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
         }
 
-        $user = auth()->user();
+        $user = JWTAuth::parseToken()->authenticate();
 
-        // حذف الصورة القديمة إن وجدت
         if ($user->profile_image && file_exists(public_path('storage/' . $user->profile_image))) {
             unlink(public_path('storage/' . $user->profile_image));
         }
@@ -274,4 +251,15 @@ class AuthController extends Controller
         ]);
     }
 
+    // مساعدة لإرجاع JWT
+    protected function respondWithToken($token)
+    {
+        return response()->json([
+            'status' => 'success',
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => JWTAuth::factory()->getTTL() * 60,
+            'user' => JWTAuth::parseToken()->authenticate()
+        ]);
+    }
 }
