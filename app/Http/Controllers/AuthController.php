@@ -174,7 +174,7 @@ class AuthController extends Controller
             return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
         }
 
-        $user = auth()->user();
+        $user = auth()->guard('api')->user();
 
         if (!$user) {
             return response()->json(['status'=>'error','message'=>'User not authenticated.'], 401);
@@ -199,7 +199,7 @@ class AuthController extends Controller
             'access_token' => $token,
             'token_type' => 'bearer',
             'expires_in' => auth()->guard('api')->factory()->getTTL() * 60,
-            'user' => auth()->user()
+            'user' => auth()->guard('api')->user()
         ]);
     }
 
@@ -226,7 +226,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = auth()->user();
+        $user = auth()->guard('api')->user();
 
 
         if (!Hash::check($request->current_password, $user->password)) {
@@ -257,7 +257,7 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $user = auth()->user();
+        $user = auth()->guard('api')->user();
 
         // حذف الصورة القديمة إن وجدت
         if ($user->profile_image && file_exists(public_path('storage/' . $user->profile_image))) {

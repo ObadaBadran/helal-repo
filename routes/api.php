@@ -1,7 +1,8 @@
 <?php
 
 use App\Http\Controllers\VideoChatController;
-use Illuminate\Support\Facades\Request;
+use App\Mail\ContactMail;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NewsSectionController;
@@ -45,9 +46,8 @@ Route::prefix('news-sections')->group(function () {
 //email**************************************************************************
 Route::post('/contact/send', function(Request $request) {
     $data = $request->validate([
-        'name' => 'required|string|max:255',
+        'full_name' => 'required|string|max:255',
         'email' => 'required|email',
-        'phone' => 'nullable|string|max:20',
         'subject' => 'required|string|max:255',
         'message' => 'required|string',
     ]);
