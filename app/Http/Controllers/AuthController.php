@@ -212,7 +212,7 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $user = auth()->guard('api')->user();
+        $user = auth()->user();
 
         if (!$user) {
             return response()->json([
@@ -241,7 +241,7 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $user = auth()->guard('api')->user();
+        $user = auth()->user();
 
         if ($user->profile_image && file_exists(public_path('storage/' . $user->profile_image))) {
             unlink(public_path('storage/' . $user->profile_image));
