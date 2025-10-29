@@ -204,6 +204,13 @@ class AuthController extends Controller
 
         $user = auth()->guard('api')->user();
 
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Authentication token is missing or invalid.'
+            ], 401);
+        }
+
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json(['status' => 'error', 'message' => 'Current password is incorrect.'], 401);
         }
