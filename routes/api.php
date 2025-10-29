@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NewsSectionController;
+use App\Http\Controllers\AdminContoller;
 use Illuminate\Support\Facades\Mail;
 
 //Auth***************************************************************************************
@@ -70,3 +71,8 @@ Route::middleware(['auth:api', 'admin'])->group(function() {
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/courses/{id}', [CourseController::class, 'show']);
 
+//Admin
+
+Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::get('users',[AdminContoller::class, 'getUsers']);
+});
