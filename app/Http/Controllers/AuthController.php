@@ -31,6 +31,8 @@ class AuthController extends Controller
                 'regex:/[@$!%*#?&]/',
                 'confirmed',
             ],
+            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'role' => 'in:admin,user'
         ]);
 
         if ($validator->fails()) {
@@ -40,11 +42,19 @@ class AuthController extends Controller
             ], 422);
         }
 
+        $imagePath = null;
+
+        if ($request->hasFile('profile_image')) {
+            $imagePath = $request->file('profile_image')->store('profile_images', 'public');
+        }
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
+            'profile_image' => $imagePath,
+            'role' => $request->role ?? 'user',
         ]);
 
         $token = JWTAuth::fromUser($user);
@@ -192,4 +202,76 @@ class AuthController extends Controller
             'user' => auth()->user()
         ]);
     }
+
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[@$!%*#?&]/',
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = auth()->user();
+
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Current password is incorrect.'
+            ], 401);
+        }
+
+
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password changed successfully.'
+        ], 200);
+    }
+
+    public function updateProfileImage(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'profile_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        }
+
+        $user = auth()->user();
+
+        // حذف الصورة القديمة إن وجدت
+        if ($user->profile_image && file_exists(public_path('storage/' . $user->profile_image))) {
+            unlink(public_path('storage/' . $user->profile_image));
+        }
+
+        $path = $request->file('profile_image')->store('profile_images', 'public');
+        $user->update(['profile_image' => $path]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profile image updated successfully.',
+            'profile_image_url' => asset('storage/' . $path)
+        ]);
+    }
+
 }
