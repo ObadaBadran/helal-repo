@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\VideoChatController;
 use App\Mail\ContactMail;
 use Illuminate\Http\Request;
@@ -59,4 +60,13 @@ Route::post('/contact/send', function(Request $request) {
         'message' => 'Your message has been sent successfully!'
     ]);
 });
+// Admin
+Route::middleware(['auth:api', 'admin'])->group(function() {
+    Route::post('/admin/courses/store', [CourseController::class, 'store']);
+    Route::post('/admin/courses/update/{id}', [CourseController::class, 'update']);
+    Route::delete('/admin/courses/delete/{id}', [CourseController::class, 'destroy']);
+});
+
+Route::get('/courses', [CourseController::class, 'index']);
+Route::get('/courses/{id}', [CourseController::class, 'show']);
 

@@ -82,13 +82,13 @@ class AuthController extends Controller
     // عرض بيانات المستخدم الحالي
     public function me()
     {
-        return response()->json(JWTAuth::user());
+        return response()->json(auth()->user());
     }
 
     // تسجيل الخروج
     public function logout()
     {
-        auth()->guard('api')->logout();
+        auth()->logout();
         return response()->json(['status'=>'success', 'message' => 'Successfully logged out']);
     }
 
@@ -174,7 +174,7 @@ class AuthController extends Controller
             return response()->json(['status'=>'error','errors'=>$validator->errors()], 422);
         }
 
-        $user = auth()->guard('api')->user();
+        $user = auth()->user();
 
         if (!$user) {
             return response()->json(['status'=>'error','message'=>'User not authenticated.'], 401);
@@ -198,8 +198,8 @@ class AuthController extends Controller
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => auth()->guard('api')->factory()->getTTL() * 60,
-            'user' => auth()->guard('api')->user()
+            'expires_in' => auth()->factory()->getTTL() * 60,
+            'user' => auth()->user()
         ]);
     }
 
@@ -226,7 +226,7 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = auth()->guard('api')->user();
+        $user = auth()->user();
 
 
         if (!Hash::check($request->current_password, $user->password)) {
@@ -257,7 +257,7 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $user = auth()->guard('api')->user();
+        $user = auth()->user();
 
         // حذف الصورة القديمة إن وجدت
         if ($user->profile_image && file_exists(public_path('storage/' . $user->profile_image))) {

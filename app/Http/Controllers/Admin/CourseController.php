@@ -1,0 +1,220 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Course;
+use App\Models\Video;
+use App\PaginationTrait;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Exception;
+
+class CourseController extends Controller
+{
+
+    use PaginationTrait;
+
+
+    public function index(Request $request)
+    {
+        try {
+            $lang = $request->query('lang', 'en'); 
+
+            $courses = Course::all()->map(function ($course) use ($lang) {
+                return [
+                    'id' => $course->id,
+                    'title' => $lang === 'ar' ? $course->title_ar : $course->title_en,
+                    'subTitle' => $lang === 'ar' ? $course->subTitle_ar : $course->subTitle_en,
+                    'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
+                    'price_aed' => $course->price_aed,
+                    'price_usd' => $course->price_usd,
+                    'reviews' => $course->reviews,
+                ];
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Courses retrieved successfully',
+                'courses' => $courses
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to retrieve courses',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            $validatedData = $request->validate([
+                'title_en' => 'required|string|max:255',
+                'title_ar' => 'required|string|max:255',
+                'subTitle_en' => 'nullable|string|max:255',
+                'subTitle_ar' => 'nullable|string|max:255',
+                'description_en' => 'required|string',
+                'description_ar' => 'required|string',
+                'price_aed' => 'required|numeric|min:0',
+                'price_usd' => 'required|numeric|min:0',
+                'reviews' => 'required|integer|min:0',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ]);
+
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('course_images', 'public');
+                $validatedData['image'] = '/storage/' . $path;
+            }
+
+            $course = Course::create($validatedData);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Course created successfully',
+                'course' => $course
+            ], 201);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create course',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function show(Request $request, $id)
+    {
+        try {
+            $lang = $request->query('lang', 'en');
+            $course = Course::findOrFail($id);
+
+            $courseData = [
+                'id' => $course->id,
+                'title' => $lang === 'ar' ? $course->title_ar : $course->title_en,
+                'subTitle' => $lang === 'ar' ? $course->subTitle_ar : $course->subTitle_en,
+                'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
+                'price_aed' => $course->price_aed,
+                'price_usd' => $course->price_usd,
+                'reviews' => $course->reviews,
+                'image' => $course->image ? asset($course->image) : null,
+            ];
+
+            $videosQuery = Video::where('course_id', $course->id)
+                ->select('id', $lang === 'ar' ? 'title_ar as title' : 'title_en as title', 'video_url');
+
+            $videosPaginated = $this->paginateResponse($request, $videosQuery, 'Videos', function ($video) {
+                return [
+                    'id' => $video->id,
+                    'title' => $video->title,
+                    'video_url' => $video->video_url,
+                ];
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Course retrieved successfully',
+                'course' => $courseData,
+                'videos' => $videosPaginated,
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Course not found'
+            ], 404);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to retrieve course',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+   public function update(Request $request, $id)
+    {
+        try {
+            $course = Course::findOrFail($id);
+
+            $validatedData = $request->validate([
+                'title_en' => 'nullable|string|max:255',
+                'title_ar' => 'nullable|string|max:255',
+                'subTitle_en' => 'nullable|string|max:255',
+                'subTitle_ar' => 'nullable|string|max:255',
+                'description_en' => 'nullable|string',
+                'description_ar' => 'nullable|string',
+                'price_aed' => 'nullable|numeric|min:0',
+                'price_usd' => 'nullable|numeric|min:0',
+                'reviews' => 'nullable|integer|min:0',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ]);
+
+            if ($request->hasFile('image')) {
+                // حذف الصورة القديمة إن وجدت
+                if ($course->image && file_exists(public_path('storage/' . $course->image))) {
+                    unlink(public_path('storage/' . $course->image));
+                }
+
+                // رفع الصورة الجديدة
+                $path = $request->file('image')->store('course_images', 'public');
+                $validatedData['image'] = '/storage/' . $path ;
+            }
+
+            $course->update($validatedData);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Course updated successfully',
+                'course' => $course
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Course not found'
+            ], 404);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to update course',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    public function destroy($id)
+    {
+        try {
+            $course = Course::findOrFail($id);
+            $course->delete();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Course deleted successfully'
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Course not found'
+            ], 404);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete course',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+}
