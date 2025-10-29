@@ -19,7 +19,7 @@ class AdminMiddleware
         $user = Auth::user();
 
 
-        if (!$user || !$user->role !== 'admin') {
+        if (!$user || $user->role !== 'admin') {
             return response()->json([
                 'status' => false,
                 'message' => 'You are not authorized to access this resource.'

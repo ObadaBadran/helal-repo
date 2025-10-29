@@ -7,6 +7,7 @@ use App\Models\NewsSectionImage;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
+use Illuminate\Support\Facades\Storage;
 
 class NewsSectionController extends Controller
 {
@@ -120,7 +121,7 @@ class NewsSectionController extends Controller
                     'subtitle_ar' => $newsSection->subtitle_ar,
                     'description_en' => $newsSection->description_en,
                     'description_ar' => $newsSection->description_ar,
-                    'images' => $imagePaths,
+                    'image' => $imagePaths,
                     'created_at' => $newsSection->created_at,
                     'updated_at' => $newsSection->updated_at,
                 ]
@@ -158,8 +159,8 @@ class NewsSectionController extends Controller
             if ($request->hasFile('image')) {
                 // حذف الصور القديمة من التخزين والسجل
                 foreach ($newsSection->images as $oldImage) {
-                    if (\Storage::disk('public')->exists($oldImage->image)) {
-                        \Storage::disk('public')->delete($oldImage->image);
+                    if (Storage::disk('public')->exists($oldImage->image)) {
+                        Storage::disk('public')->delete($oldImage->image);
                     }
                     $oldImage->delete();
                 }

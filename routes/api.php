@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\VideoChatController;
+use Illuminate\Support\Facades\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NewsSectionController;
+use Illuminate\Support\Facades\Mail;
 
 //Auth***************************************************************************************
 Route::post('register', [AuthController::class, 'register']);
@@ -39,5 +41,22 @@ Route::prefix('news-sections')->group(function () {
         Route::post('/{id}', [NewsSectionController::class, 'update']);
         Route::delete('/{id}', [NewsSectionController::class, 'destroy']);
     });
+});
+//email**************************************************************************
+Route::post('/contact/send', function(Request $request) {
+    $data = $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email',
+        'phone' => 'nullable|string|max:20',
+        'subject' => 'required|string|max:255',
+        'message' => 'required|string',
+    ]);
+
+    // إرسال البريد إلى المدير
+    Mail::to('obadabadran382@gmail.com')->send(new ContactMail($data));
+
+    return response()->json([
+        'message' => 'Your message has been sent successfully!'
+    ]);
 });
 
