@@ -73,8 +73,8 @@ class VideoController extends Controller
         try {
             $validatedData = $request->validate([
                 'course_id' => 'required|exists:courses,id',
-                'path' => 'nullable|file|mimes:mp4,mov,avi',
-                'youtube_path' => 'nullable|string|max:255',
+                'path' => 'nullable|file|mimes:mp4,mov,avi|prohibits:youtube_path',
+                'youtube_path' => 'nullable|string|max:255|prohibits:path',
                 'title_en' => 'required|string|max:255',
                 'title_ar' => 'required|string|max:255',
                 'subTitle_en' => 'nullable|string|max:255',
@@ -162,15 +162,15 @@ class VideoController extends Controller
 
             $validatedData = $request->validate([
                 'course_id' => 'nullable|exists:courses,id',
-                'path' => 'nullable|file|mimes:mp4,mov,avi|max:51200',
-                'youtube_path' => 'nullable|string|max:255',
+                'path' => 'nullable|file|mimes:mp4,mov,avi|prohibits:youtube_path',
+                'youtube_path' => 'nullable|string|max:255|prohibits:path',
                 'title_en' => 'nullable|string|max:255',
                 'title_ar' => 'nullable|string|max:255',
                 'subTitle_en' => 'nullable|string|max:255',
                 'subTitle_ar' => 'nullable|string|max:255',
                 'description_en' => 'nullable|string',
                 'description_ar' => 'nullable|string',
-                'cover' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'cover' => 'nullable|image|mimes:jpeg,png,jpg,gif',
                 
             ]);
 
