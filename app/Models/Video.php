@@ -7,16 +7,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Video extends Model
 {
-    protected $fillable = [
+     protected $fillable = [
         'course_id',
         'path',
+        'youtube_path',
         'title_en',
         'title_ar',
         'subTitle_en',
         'subTitle_ar',
         'description_en',
         'description_ar',
-        'youtube_path',
+        'cover',
     ];
 
 

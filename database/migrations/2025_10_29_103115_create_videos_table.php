@@ -16,14 +16,15 @@ return new class extends Migration
             $table->foreignId('course_id')->constrained('courses')
             ->cascadeOnUpdate()
             ->cascadeOnDelete();
-            $table->string('path');
+            $table->string('path')->nullable();
+            $table->string('cover')->nullable();
             $table->string('youtube_path')->nullable();
-            $table->string('title_en');
-            $table->string('title_ar');
+            $table->string('title_en')->nullable();
+            $table->string('title_ar')->nullable();
             $table->string('subTitle_en')->nullable();
             $table->string('subTitle_ar')->nullable();
-            $table->text('description_en');
-            $table->text('description_ar');
+            $table->text('description_en')->nullable();
+            $table->text('description_ar')->nullable();
             $table->timestamps();
         });
     }

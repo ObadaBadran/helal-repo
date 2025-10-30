@@ -13,14 +13,14 @@ return new class extends Migration
     {
         Schema::create('courses', function (Blueprint $table) {
             $table->id();
-            $table->string('title_en');
-            $table->string('title_ar');
+            $table->string('title_en')->nullable();
+            $table->string('title_ar')->nullable();
             $table->string('subTitle_en')->nullable();
             $table->string('subTitle_ar')->nullable();
-            $table->text('description_en');
-            $table->text('description_ar');
-            $table->decimal('price_aed', 10, 2);
-            $table->decimal('price_usd', 10, 2);
+            $table->text('description_en')->nullable();
+            $table->text('description_ar')->nullable();
+            $table->decimal('price_aed', 10, 2)->default(0);
+            $table->decimal('price_usd', 10, 2)->default(0);
             $table->integer('reviews');
             $table->string('image')->nullable();
             $table->timestamps();

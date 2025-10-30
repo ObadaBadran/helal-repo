@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CourseController;
+use App\Http\Controllers\Admin\VideoController;
 use App\Http\Controllers\VideoChatController;
 use App\Mail\ContactMail;
 use Illuminate\Http\Request;
@@ -66,10 +67,19 @@ Route::middleware(['auth:api', 'admin'])->group(function() {
     Route::post('/admin/courses/store', [CourseController::class, 'store']);
     Route::post('/admin/courses/update/{id}', [CourseController::class, 'update']);
     Route::delete('/admin/courses/delete/{id}', [CourseController::class, 'destroy']);
+
+    //videos
+    Route::post('/admin/videos/store', [VideoController::class, 'store']);
+    Route::post('/admin/videos/update/{id}', [VideoController::class, 'update']);
+    Route::delete('/admin/videos/delete/{id}', [VideoController::class, 'destroy']);
 });
 
 Route::get('/courses', [CourseController::class, 'index']);
 Route::get('/courses/{id}', [CourseController::class, 'show']);
+
+Route::get('/courses/{course_id}/videos', [VideoController::class, 'index']);
+Route::get('/videos/{id}', [VideoController::class, 'show']);
+
 
 //Admin
 
