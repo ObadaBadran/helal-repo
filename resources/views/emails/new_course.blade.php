@@ -11,11 +11,6 @@
     Here’s what you can expect:
     - 💡 Engaging lessons
     - 🎥 HD videos
-    - 🏆 Certificate upon completion
-
-    @component('mail::button', ['url' => url('/courses/' . $course->id)])
-        View Course
-    @endcomponent
 
     Thanks for being part of our learning community!
     **The {{ config('app.name') }} Team**

@@ -94,17 +94,19 @@ class CourseController extends Controller
 
             $course = Course::create($validatedData);
 
+            $users = User::where('role', 'user')->get();
+
+            foreach ($users as $user) {
+                Mail::to($user->email)->send(new NewCourseMail($course));
+            }
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Course created successfully',
                 'course' => $course
             ], 201);
 
-            $users = User::where('role', 'user')->get();
 
-            foreach ($users as $user) {
-                Mail::to($user->email)->send(new NewCourseMail($course));
-            }
 
         } catch (Exception $e) {
             return response()->json([

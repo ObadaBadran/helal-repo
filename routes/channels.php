@@ -5,7 +5,13 @@ use Illuminate\Support\Facades\Broadcast;
     return ['id' => $user->id, 'name' => $user->name];
 });*/
 
-Broadcast::channel('video-room.{room_id}', function ($user, $room_id) {
+/*Broadcast::channel('video-room.{room_id}', function ($user, $room_id) {
     // جميع المستخدمين المصرح لهم يمكنهم الانضمام
     return ['id' => $user->id, 'name' => $user->name];
+});*/
+
+
+  Broadcast::channel('presence-video-room.{room_id}', function ($user, $room_id) {
+    return ['id' => $user->id, 'name' => $user->name];
 });
+
