@@ -30,7 +30,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/accept-call', [VideoChatController::class, 'acceptCall']);
 
     // بث جماعي
-    Route::post('/broadcast/start', [VideoChatController::class, 'start']);
+    Route::post('/broadcast/start', [VideoChatController::class, 'start'])->middleware(['admin']);
     Route::post('/broadcast/signal', [VideoChatController::class, 'signal']);
 });
 
