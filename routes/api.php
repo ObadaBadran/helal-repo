@@ -11,7 +11,69 @@ use App\Http\Controllers\NewsSectionController;
 use App\Http\Controllers\AdminContoller;
 use App\Http\Controllers\User\EnrollController;
 use Illuminate\Support\Facades\Mail;
+use Google\Client as GoogleClient;
+use Google\Service\Calendar as GoogleCalendar;
+use Google\Service\Calendar\Event as GoogleEvent;
 
+Route::get('/auth/google', function () {
+    $client = new GoogleClient();
+    $client->setClientId(env('GOOGLE_CLIENT_ID'));
+    $client->setClientSecret(env('GOOGLE_CLIENT_SECRET'));
+    $client->setRedirectUri(env('GOOGLE_REDIRECT_URI'));
+    $client->addScope('https://www.googleapis.com/auth/calendar');
+
+    $authUrl = $client->createAuthUrl();
+    return redirect($authUrl); // يعيدك إلى Google لتسجيل الدخول
+});
+
+Route::get('/auth/google/callback', function (Request $request) {
+    $client = new GoogleClient();
+    $client->setClientId(env('GOOGLE_CLIENT_ID'));
+    $client->setClientSecret(env('GOOGLE_CLIENT_SECRET'));
+    $client->setRedirectUri(env('GOOGLE_REDIRECT_URI'));
+
+    $client->authenticate($request->code);
+    $token = $client->getAccessToken();
+
+    session(['google_token' => $token]);
+
+    return response()->json([
+        'message' => 'Google OAuth successful',
+        'access_token' => $token
+    ]);
+});
+
+Route::get('/create-meet', function (Request $request) {
+    // اقرأ الـ Bearer Token من Header
+    $token = $request->bearerToken();
+    if (!$token) {
+        return response()->json(['message' => 'No token, provide a Bearer token in Authorization header'], 401);
+    }
+
+    $client = new GoogleClient();
+    $client->setAccessToken(['access_token' => $token]); // ضع التوكن هنا
+    $service = new GoogleCalendar($client);
+
+    $event = new GoogleEvent([
+        'summary' => 'Test Meeting',
+        'description' => 'Meeting created via API',
+        'start' => ['dateTime' => now()->addMinutes(5)->toAtomString(), 'timeZone' => 'UTC'],
+        'end' => ['dateTime' => now()->addMinutes(65)->toAtomString(), 'timeZone' => 'UTC'],
+        'conferenceData' => [
+            'createRequest' => [
+                'requestId' => 'random-' . uniqid(),
+                'conferenceSolutionKey' => ['type' => 'hangoutsMeet'],
+            ],
+        ],
+    ]);
+
+    $createdEvent = $service->events->insert('primary', $event, ['conferenceDataVersion' => 1]);
+
+    return response()->json([
+        'message' => 'Meet created successfully',
+        'meet_link' => $createdEvent->getHangoutLink()
+    ]);
+});
 //Auth***************************************************************************************
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);

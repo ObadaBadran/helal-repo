@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\StartVideoChat;
+
 use App\Events\VideoSignal;
+use App\Mail\StartVideoChat;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 
 class VideoChatController extends Controller
 {
@@ -49,6 +52,12 @@ class VideoChatController extends Controller
         ];
 
         event(new StartVideoChat($data));
+        $users = User::where('role', 'user')->get();
+        foreach ($users as $user) {
+            Mail::to($user->email)->send(new StartVideoChat([
+                'room_id' => $roomId
+            ]));
+        }
 
         return response()->json(['message' => 'Broadcast started', 'room_id' => $roomId]);
     }
