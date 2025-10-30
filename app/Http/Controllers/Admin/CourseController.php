@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\NewCourseMail;
+use App\Models\Enroll;
 
 class CourseController extends Controller
 {
@@ -22,9 +23,26 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         try {
-            $lang = $request->query('lang', 'en');
+            $lang = $request->query('lang', 'en'); 
+            $user = auth('api')->user();
 
-            $courses = Course::all()->map(function ($course) use ($lang) {
+            $courses = Course::select(
+                'id',
+                'title_en', 'title_ar',
+                'subTitle_en', 'subTitle_ar',
+                'description_en', 'description_ar',
+                'price_usd', 'price_aed',
+                'reviews',
+            )->get()->map(function ($course) use ($lang, $user) {
+
+                $isEnrolled = false;
+                if ($user) {
+                    $isEnrolled = Enroll::where('user_id', $user->id)
+                        ->where('course_id', $course->id)
+                        ->where('payment_status', 'paid')
+                        ->exists();
+                }
+
                 return [
                     'id' => $course->id,
                     'title' => $lang === 'ar' ? $course->title_ar : $course->title_en,
@@ -33,6 +51,7 @@ class CourseController extends Controller
                     'price_aed' => $course->price_aed,
                     'price_usd' => $course->price_usd,
                     'reviews' => $course->reviews,
+                    'is_enroll' => $isEnrolled, 
                 ];
             });
 
@@ -50,6 +69,7 @@ class CourseController extends Controller
             ], 500);
         }
     }
+
 
     public function store(Request $request)
     {

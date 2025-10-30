@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NewsSectionController;
 use App\Http\Controllers\AdminContoller;
+use App\Http\Controllers\User\EnrollController;
 use Illuminate\Support\Facades\Mail;
 
 //Auth***************************************************************************************
@@ -79,6 +80,10 @@ Route::get('/courses/{id}', [CourseController::class, 'show']);
 
 Route::get('/courses/{course_id}/videos', [VideoController::class, 'index']);
 Route::get('/videos/{id}', [VideoController::class, 'show']);
+
+//enroll course
+Route::middleware('auth:api')->post('/enroll', [EnrollController::class, 'enrollCourse']);
+Route::middleware('auth:api')->get('/enrolled_courses', [EnrollController::class, 'showEnrollCourses']);
 
 
 //Admin
