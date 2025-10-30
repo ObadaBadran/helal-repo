@@ -19,14 +19,17 @@ class EnrollController extends Controller
 
         try {
             $validatedData = $request->validate([
-            'payment_token' => 'required|string',
+            // 'payment_token' => 'required|string',
             'course_id' => 'required| integer|exists:courses,id',
             'addrLine1' => 'required|string|max:255',
             'city' => 'required|string| max:100',
             'zipCode' => 'required|string|max:20',
             'country' => 'required |string',
-            'currency' => 'nullable|string'
-            ]);
+            'currency' => 'nullable|string',
+            'return_url' => 'required|url', 
+            'cancel_url' => 'required|url',
+
+        ]);
         }catch(ValidationException $e) {
                 return response()->json([
                 'status' => 'error',
@@ -65,54 +68,46 @@ class EnrollController extends Controller
             
             try {
 
-                Twocheckout::privateKey(env('TCO_PRIVATE_KEY'));
-                Twocheckout::sellerId(env('TCO_SELLER_ID'));
+                //Twocheckout::privateKey(env('TCO_PRIVATE_KEY'));
+                //Twocheckout::sellerId(env('TCO_SELLER_ID'));
+
+                $secretWord = env('TCO_SECRET_WORD');
+                $sellerId = env('TCO_SELLER_ID');
                 
-                if (env('TCO_TEST_MODE') === 'true') {
-                    Twocheckout::$baseUrl = 'https://sandbox.2checkout.com'; 
-                } 
+                $baseUrl = env('TCO_TEST_MODE') === 'true' 
+                    ? 'https://sandbox.2checkout.com/checkout/purchase' 
+                : 'https://www.2checkout.com/checkout/purchase';
 
-                $charge = Twocheckout_Charge::auth([
-                    "merchantOrderId" => "CRS-" . $enrollment->id,
-                    "token" => $validatedData['payment_token'], 
-                    "currency" => $currency,
-                    "total" => $amount,
-                    "billingAddr" => [
-                        "name" => $user->name,
-                        "addrLine1" => $validatedData['addrLine1'],
-                        "city" => $validatedData['city'],
-                        "state" => $request->json('state'),
-                        "zipCode" => $validatedData['zipCode'],
-                        "country" => $validatedData['country'],
-                        "email" => $user->email,
-                        "phoneNumber" => $user->phone_number,
-                    ]
-                ]);
-
-                if ($charge['response']['responseCode'] == 'APPROVED') {
+                $orderData = [
+                    'sid' => $sellerId, // مُعرّف التاجر
+                    'mode' => '2CO', // نمط الدفع (قياسي)
+                    'li_0_name' => 'Course Enrollment: ' . $courseId,
+                    'li_0_price' => number_format($validatedData['amount'], 2, '.', ''),
+                    'li_0_type' => 'product',
+                    'li_0_quantity' => 1,
+                    'card_holder_name' => $user->name,
+                    'street_address' => $validatedData['addrLine1'],
+                    'city' => $validatedData['city'],
+                    'zip' => $validatedData['zipCode'],
+                    'country' => $validatedData['country'],
+                    'email' => $user->email,
                     
-                    $enrollment->update([
-                        'payment_status' => 'paid',
-                        'transaction_id' => $charge['response']['transactionId'],
-                        'is_enroll' => true,
-                    ]);
+                    'merchant_order_id' => $enrollment->id,
+                    
+                    'return_url' => $validatedData['return_url'] . '?order_id=' . $enrollment->id, 
+                    'x_cancel_url' => $validatedData['cancel_url'],
+                    
+                    'demo' => env('TCO_TEST_MODE') === 'true' ? 'Y' : '',
+                ];
 
-                    $course->reviews++;
-                    $course->save();
-
-                    return response()->json([
-                        'status' => 'success', 
-                        'message' => 'Enrollment successful! Payment approved.',
-                        'transaction_id' => $enrollment->transaction_id
-                    ]);
-
-                } else {
-                    $enrollment->update(['payment_status' => 'cancelled']);
-                    return response()->json([
-                        'status' => 'failure', 
-                        'message' => 'Payment failed: ' . $charge['response']['responseMessage']
-                    ], 400);
-                }
+                $hashString = $orderData['li_0_price'] . $orderData['sid'] . $orderData['merchant_order_id'] . $secretWord;
+                $orderData['ts_hash'] = strtoupper(hash_hmac('md5', $hashString, $secretWord));
+                $redirectUrl = $baseUrl . '?' . http_build_query($orderData);
+                return response()->json([
+                    'status' => 'redirect', 
+                    'message' => 'Redirecting to 2Checkout payment gateway.',
+                    'redirect_url' => $redirectUrl,
+                ]);
 
             } catch (Twocheckout_Error $e) {
                 $enrollment->update(['payment_status' => 'cancelled']);
