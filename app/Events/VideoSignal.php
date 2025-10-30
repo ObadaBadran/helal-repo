@@ -8,7 +8,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-
+use Illuminate\Broadcasting\PresenceChannel;
 class VideoSignal implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -24,9 +24,13 @@ class VideoSignal implements ShouldBroadcast
     {
         return new PrivateChannel('video-room.' . $this->data['room_id']);
     }*/
-    public function broadcastOn()
+    /*public function broadcastOn()
     {
         return new Channel('video-room'); // قناة عامة للتجربة
+    }*/
+    public function broadcastOn()
+    {
+        return new PresenceChannel('presence-video-room.' . $this->data['room_id']);
     }
 
     public function broadcastAs()

@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\Course;
 use App\Models\Video;
 use App\PaginationTrait;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\NewCourseMail;
 
 class CourseController extends Controller
 {
@@ -19,7 +22,7 @@ class CourseController extends Controller
     public function index(Request $request)
     {
         try {
-            $lang = $request->query('lang', 'en'); 
+            $lang = $request->query('lang', 'en');
 
             $courses = Course::all()->map(function ($course) use ($lang) {
                 return [
@@ -76,6 +79,12 @@ class CourseController extends Controller
                 'message' => 'Course created successfully',
                 'course' => $course
             ], 201);
+
+            $users = User::where('role', 'user')->get();
+
+            foreach ($users as $user) {
+                Mail::to($user->email)->send(new NewCourseMail($course));
+            }
 
         } catch (Exception $e) {
             return response()->json([
