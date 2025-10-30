@@ -9,7 +9,7 @@ trait PaginationTrait
     public function paginateResponse(Request $request, $query, string $resourceLabel = 'Items', callable $transform = null)
     {
         $isPaginate = $request->boolean('isPaginate', true);
-        $pageSize = $request->input('size', 10);
+        $pageSize = $request->input('per_page', 10);
         $page = $request->input('page', 1);
 
         if ($isPaginate) {
