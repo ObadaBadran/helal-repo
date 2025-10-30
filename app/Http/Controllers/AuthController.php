@@ -63,12 +63,22 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $credentials = $request->only('email', 'password');
+        $user = User::where('email', $request->email)->first();
 
-        if (!$token = auth()->guard('api')->attempt($credentials)) {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json(['status' => 'error', 'message' => 'Invalid credentials'], 401);
         }
 
-        return $this->respondWithToken($token);
+        if ($user->role === 'admin') {
+
+            $customTTL = 525600;
+            $token = auth()->guard('api')->claims(['role' => 'admin'])->setTTL($customTTL)->login($user);
+        } else {
+
+            $token = auth()->guard('api')->login($user);
+        }
+
+        return $this->respondWithToken($token, $user);
     }
 
     // المستخدم الحالي — يحتاج أن يكون مستخدم مصادق عليه (token)
@@ -248,14 +258,19 @@ class AuthController extends Controller
     }
 
     // دالة مساعدة لإرجاع التوكن مع معلومات المستخدم
-    protected function respondWithToken($token)
+    protected function respondWithToken($token, $user)
     {
+        // تحقق من دور المستخدم لتحديد وقت الانتهاء
+        $expiresIn = ($user->role === 'admin')
+            ? null // null تعني "صالح دائمًا" تقريبًا
+            : auth()->guard('api')->factory()->getTTL() * 60; // بالثواني
+
         return response()->json([
             'status' => 'success',
             'access_token' => $token,
             'token_type' => 'bearer',
-            'expires_in' => auth()->guard('api')->factory()->getTTL() * 60,
-            'user' => auth()->guard('api')->user(),
+            'expires_in' => $expiresIn,
+            'user' => $user,
         ]);
     }
 }
