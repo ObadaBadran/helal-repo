@@ -73,6 +73,9 @@ class CourseController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth('api')->user();
+        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
+        
         try {
             $validatedData = $request->validate([
                 'title_en' => 'required|string|max:255',
@@ -120,6 +123,9 @@ class CourseController extends Controller
 
     public function show(Request $request, $id)
     {
+        $user = auth('api')->user();
+        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
+
         try {
             $lang = $request->query('lang', 'en');
             $course = Course::findOrFail($id);
@@ -136,13 +142,13 @@ class CourseController extends Controller
             ];
 
             $videosQuery = Video::where('course_id', $course->id)
-                ->select('id', $lang === 'ar' ? 'title_ar as title' : 'title_en as title', 'video_url');
+                ->select('id', $lang === 'ar' ? 'title_ar as title' : 'title_en as title', 'path');
 
             $videosPaginated = $this->paginateResponse($request, $videosQuery, 'Videos', function ($video) {
                 return [
                     'id' => $video->id,
                     'title' => $video->title,
-                    'video_url' => $video->video_url,
+                    'video_url' => $video->path,
                 ];
             });
 

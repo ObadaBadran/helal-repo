@@ -106,8 +106,9 @@ class EnrollController extends Controller
 
         $enrolls = Enroll::with('course')
             ->where('user_id', $user->id)
+            ->where('payment_status', 'paid')
             ->orderBy('created_at', 'desc')
-            ->get();
+        ->get();
 
         $data = $enrolls->map(function($enroll) use ($lang) {
             $course = $enroll->course;

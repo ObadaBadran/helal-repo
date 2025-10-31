@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Course;
 use App\Models\Enroll;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -35,12 +36,16 @@ class StripeWebhookController extends Controller
             $session = $event->data->object;
 
             $enrollment = Enroll::find($session->metadata->order_id);
+            $course = Course::find($session->metadata->course_id);
+
             if ($enrollment && $enrollment->payment_status !== 'paid') {
                 $enrollment->update([
                     'payment_status' => 'paid',
                     'is_enroll' => true,
                     'stripe_session_id' => $session->id,
                 ]);
+                $course->reviews++;
+                $course->save();
 
                 Log::info('Enrollment updated successfully.', ['enrollment_id' => $enrollment->id]);
             }

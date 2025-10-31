@@ -10,11 +10,15 @@ use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 
+use function PHPUnit\Framework\returnSelf;
+
 class VideoController extends Controller
 {
     use PaginationTrait;
 
     public function index(Request $request, $course_id) {
+        $user = auth('api')->user();
+        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
 
         try{
             $lang = $request->query('lang', 'en');
@@ -73,8 +77,8 @@ class VideoController extends Controller
         try {
             $validatedData = $request->validate([
                 'course_id' => 'required|exists:courses,id',
-                'path' => 'nullable|file|mimes:mp4,mov,avi|prohibits:youtube_path',
-                'youtube_path' => 'nullable|string|max:255|prohibits:path',
+                'path' => 'required_without:youtube_path|file|mimes:mp4,mov,avi',
+                'youtube_path' => 'required_without:path|string|max:255|required_without:path',
                 'title_en' => 'required|string|max:255',
                 'title_ar' => 'required|string|max:255',
                 'subTitle_en' => 'nullable|string|max:255',
@@ -112,6 +116,9 @@ class VideoController extends Controller
 
     public function show(Request $request, $id)
     {
+        $user = auth('api')->user();
+        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
+        
         try {
             $lang = $request->query('lang', 'en');
 
@@ -161,7 +168,6 @@ class VideoController extends Controller
             $video = Video::findOrFail($id);
 
             $validatedData = $request->validate([
-                'course_id' => 'nullable|exists:courses,id',
                 'path' => 'nullable|file|mimes:mp4,mov,avi|prohibits:youtube_path',
                 'youtube_path' => 'nullable|string|max:255|prohibits:path',
                 'title_en' => 'nullable|string|max:255',

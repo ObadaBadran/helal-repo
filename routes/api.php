@@ -154,7 +154,7 @@ Route::middleware('auth:api')->get('/enrolled_courses', [EnrollController::class
 //Admin
 
 Route::middleware(['auth:api', 'admin'])->group(function () {
-    Route::get('users',[AdminContoller::class, 'getUsers']);
+    Route::get('admin/users',[AdminContoller::class, 'getUsers']);
 });
 
 Route::get('/get/personal-information',[AuthController::class,'getUser']);
