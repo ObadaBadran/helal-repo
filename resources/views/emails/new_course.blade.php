@@ -12,6 +12,4 @@
     - 💡 Engaging lessons
     - 🎥 HD videos
 
-    Thanks for being part of our learning community!
-    **The {{ config('app.name') }} Team**
 @endcomponent

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Broadcast;
 });*/
 
 
-  Broadcast::channel('presence-video-room.{room_id}', function ($user, $room_id) {
+  Broadcast::channel('video-room.{room_id}', function ($user, $room_id) {
     return ['id' => $user->id, 'name' => $user->name];
 });
 
