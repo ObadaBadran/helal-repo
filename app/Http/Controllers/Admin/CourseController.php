@@ -51,6 +51,7 @@ class CourseController extends Controller
                     'price_aed' => $course->price_aed,
                     'price_usd' => $course->price_usd,
                     'reviews' => $course->reviews,
+                    'cover' => $course->cover,
                     'is_enroll' => $isEnrolled, 
                 ];
             });
