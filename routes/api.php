@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NewsSectionController;
 use App\Http\Controllers\AdminContoller;
+use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\User\EnrollController;
 use Illuminate\Support\Facades\Mail;
 
@@ -83,6 +84,8 @@ Route::get('/videos/{id}', [VideoController::class, 'show']);
 
 //enroll course
 Route::middleware('auth:api')->post('/enroll', [EnrollController::class, 'enrollCourse']);
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
+
 Route::middleware('auth:api')->get('/enrolled_courses', [EnrollController::class, 'showEnrollCourses']);
 
 
