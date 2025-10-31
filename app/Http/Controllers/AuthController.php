@@ -298,4 +298,14 @@ class AuthController extends Controller
             'user' => $user,
         ]);
     }
+
+    public function getUser()
+    {
+        $user = auth()->guard('api')->user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
+        }
+
+        return response()->json(['status' => 'success', 'data' => $user]);
+    }
 }

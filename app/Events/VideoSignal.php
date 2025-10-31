@@ -30,7 +30,7 @@ class VideoSignal implements ShouldBroadcast
     }*/
     public function broadcastOn()
     {
-        return new PresenceChannel('presence-video-room.' . $this->data['room_id']);
+        return new PresenceChannel('video-room.' . $this->data['room_id']);
     }
 
     public function broadcastAs()

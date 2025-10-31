@@ -29,7 +29,7 @@ class StartVideoChat implements ShouldBroadcast
     public function broadcastOn()
     {
         // قناة presence حقيقية حتى تسمح بإرسال client events
-        return new PresenceChannel('presence-video-room.' . $this->data['room_id']);
+        return new PresenceChannel('video-room.' . $this->data['room_id']);
     }
     /*public function broadcastOn()
     {
