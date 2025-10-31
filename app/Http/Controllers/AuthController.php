@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
 
 class AuthController extends Controller
@@ -56,7 +57,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
-            'profile_image' => $imagePath,
+            'profile_image' => '/storage/'. $imagePath,
             'role' => $request->role ?? 'user',
         ]);
 
@@ -92,9 +93,15 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Email or password is incorrect.'], 401);
         }
 
-        $token = $user->role === 'admin'
-            ? auth()->guard('api')->claims(['role' => 'admin'])->setTTL(525600)->login($user)
-            : auth()->guard('api')->login($user);
+        // $token = $user->role === 'admin'
+        //     ? JWTAuth::claims(['role' => 'admin'])->setTTL(525600)->login($user)
+        //     : auth()->guard('api')->login($user);
+        if ($user->role === 'admin') {
+            config(['jwt.ttl' => 525600]);
+        }
+
+        $token = JWTAuth::claims(['role' => $user->role])->fromUser($user);
+
 
         return $this->respondWithToken($token, $user);
     }
@@ -221,6 +228,17 @@ class AuthController extends Controller
     // Change password while logged in
     public function changePassword(Request $request)
     {
+
+        $user =JWTAuth::user();
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Token is invalid or missing.',
+            ], 401);
+        }
+
+        // التحقق من البيانات
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
             'new_password' => [
@@ -228,34 +246,44 @@ class AuthController extends Controller
                 'regex:/[a-z]/', 'regex:/[A-Z]/',
                 'regex:/[0-9]/', 'regex:/[@$!%*#?&]/',
             ],
-        ], [
-            'current_password.required' => 'Current password is required.',
-            'new_password.required' => 'New password is required.',
-            'new_password.confirmed' => 'Password confirmation does not match.',
-            'new_password.regex' => 'Password must contain uppercase, lowercase, number, and special character.',
         ]);
 
+        // إن وُجدت أخطاء في التحقق
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+            // اجلب أول رسالة خطأ فقط
+            $firstError = $validator->errors()->first();
+            return response()->json([
+                'status' => 'error',
+                'message' => $firstError,
+            ], 422);
         }
-
-        $user = auth()->user();
-        if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
-        }
-
+        // التحقق من كلمة المرور الحالية
         if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['status' => 'error', 'message' => 'Current password is incorrect.'], 401);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Current password is incorrect.',
+            ], 401);
         }
 
-        $user->update(['password' => Hash::make($request->new_password)]);
+        // تحديث كلمة المرور
+        $user->update([
+            'password' => Hash::make($request->new_password)
+        ]);
 
-        return response()->json(['status' => 'success', 'message' => 'Password changed successfully.']);
+        // نجاح العملية
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password changed successfully.'
+        ]);
     }
+
 
     // Update profile image
     public function updateProfileImage(Request $request)
     {
+        $user = JWTAuth::user();
+        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
+
         $validator = Validator::make($request->all(), [
             'profile_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ], [
@@ -267,19 +295,17 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
         }
 
-        $user = auth()->user();
-
         if ($user->profile_image && file_exists(public_path('storage/' . $user->profile_image))) {
             unlink(public_path('storage/' . $user->profile_image));
         }
 
         $path = $request->file('profile_image')->store('profile_images', 'public');
-        $user->update(['profile_image' => $path]);
+        $user->update(['profile_image' => '/storage/'. $path]);
 
         return response()->json([
             'status' => 'success',
             'message' => 'Profile image updated successfully.',
-            'profile_image_url' => asset('storage/' . $path),
+            'profile_image_url' => $user->profile_image,
         ]);
     }
 
@@ -288,7 +314,7 @@ class AuthController extends Controller
     {
         $expiresIn = ($user->role === 'admin')
             ? null
-            : auth()->guard('api')->factory()->getTTL() * 60;
+            : JWTAuth::factory()->getTTL() * 60;
 
         return response()->json([
             'status' => 'success',
