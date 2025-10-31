@@ -33,6 +33,7 @@ class CourseController extends Controller
                 'description_en', 'description_ar',
                 'price_usd', 'price_aed',
                 'reviews',
+                'image',
             )->get()->map(function ($course) use ($lang, $user) {
 
                 $isEnrolled = false;
@@ -51,7 +52,7 @@ class CourseController extends Controller
                     'price_aed' => $course->price_aed,
                     'price_usd' => $course->price_usd,
                     'reviews' => $course->reviews,
-                    'cover' => $course->cover,
+                    'image' => $course->image,
                     'is_enroll' => $isEnrolled, 
                 ];
             });
