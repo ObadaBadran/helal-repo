@@ -11,13 +11,15 @@ class NewCourseMail extends Mailable
     use Queueable, SerializesModels;
 
     public $course;
+    public $user;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($course)
+    public function __construct($course, $user)
     {
         $this->course = $course;
+        $this->user = $user;
     }
 
     /**
@@ -25,7 +27,12 @@ class NewCourseMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('🎓 New Course Available: ' . $this->course->title_en)
-            ->markdown('emails.new_course');
+         $isArabic = $this->user->locale === 'ar';
+        return $this->subject($isArabic ? 'تم إضافة كورس جديد' : 'New Course Available')
+                    ->view('emails.new_course')
+                    ->with([
+                        'course' => $this->course,
+                        'isArabic' => $isArabic,
+                    ]);
     }
 }
