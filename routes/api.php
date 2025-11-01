@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Mail;
 use Google\Client as GoogleClient;
 use Google\Service\Calendar as GoogleCalendar;
 use Google\Service\Calendar\Event as GoogleEvent;
+use Carbon\Carbon;
 
 Route::get('/auth/google', function () {
     $client = new GoogleClient();
@@ -45,35 +46,66 @@ Route::get('/auth/google/callback', function (Request $request) {
     ]);
 });
 
-Route::get('/create-meet', function (Request $request) {
-    // اقرأ الـ Bearer Token من Header
+
+Route::post('/create-meet', function (Request $request) {
+    // جلب التوكين من الـ Bearer
     $token = $request->bearerToken();
     if (!$token) {
-        return response()->json(['message' => 'No token, provide a Bearer token in Authorization header'], 401);
+        return response()->json(['message' => 'No Bearer token found'], 401);
     }
 
+    // ضبط Google Client
     $client = new GoogleClient();
-    $client->setAccessToken(['access_token' => $token]); // ضع التوكن هنا
-    $service = new GoogleCalendar($client);
-
-    $event = new GoogleEvent([
-        'summary' => 'Test Meeting',
-        'description' => 'Meeting created via API',
-        'start' => ['dateTime' => now()->addMinutes(5)->toAtomString(), 'timeZone' => 'UTC'],
-        'end' => ['dateTime' => now()->addMinutes(65)->toAtomString(), 'timeZone' => 'UTC'],
-        'conferenceData' => [
-            'createRequest' => [
-                'requestId' => 'random-' . uniqid(),
-                'conferenceSolutionKey' => ['type' => 'hangoutsMeet'],
-            ],
-        ],
+    $client->setAccessToken([
+        "access_token" => $token,
+        "token_type" => "Bearer"
     ]);
 
-    $createdEvent = $service->events->insert('primary', $event, ['conferenceDataVersion' => 1]);
+    $service = new GoogleCalendar($client);
+
+    // قراءة المدخلات
+    $duration = $request->duration ?? 60;
+    $startTime = $request->start_time;
+
+    if ($startTime) {
+        $start = Carbon::parse($startTime);
+    } else {
+        // اجتماع يبدأ بعد دقيقة بشكل فوري
+        $start = Carbon::now()->addMinute();
+    }
+
+    $end = (clone $start)->addMinutes($duration);
+
+    // إعداد الحدث
+    $event = new GoogleEvent([
+        'summary' => $request->summary ?? 'Meeting',
+        'description' => $request->description ?? 'Meeting created via API',
+        'start' => [
+            'dateTime' => $start->toAtomString(),
+            'timeZone' => 'UTC'
+        ],
+        'end' => [
+            'dateTime' => $end->toAtomString(),
+            'timeZone' => 'UTC'
+        ],
+        'conferenceData' => [
+            'createRequest' => [
+                'requestId'            => uniqid(),
+                'conferenceSolutionKey' => ['type' => 'hangoutsMeet']
+            ]
+        ]
+    ]);
+
+    // إرسال الطلب إلى Google Calendar
+    $createdEvent = $service->events->insert('primary', $event, [
+        'conferenceDataVersion' => 1
+    ]);
 
     return response()->json([
-        'message' => 'Meet created successfully',
-        'meet_link' => $createdEvent->getHangoutLink()
+        'message' => 'Meet created successfully ✅',
+        'meet_link' => $createdEvent->getHangoutLink(),
+        'start_time' => $start->toDateTimeString(),
+        'end_time' => $end->toDateTimeString()
     ]);
 });
 //Auth***************************************************************************************
@@ -121,7 +153,7 @@ Route::post('/contact/send', function(Request $request) {
     ]);
 
     // إرسال البريد إلى المدير
-    Mail::to('obadabadran382@gmail.com')->send(new ContactMail($data));
+    Mail::to('haidarahmad421@gmail.com')->send(new ContactMail($data));
 
     return response()->json([
         'message' => 'Your message has been sent successfully!'
