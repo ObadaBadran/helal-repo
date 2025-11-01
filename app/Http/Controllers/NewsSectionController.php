@@ -211,8 +211,8 @@ class NewsSectionController extends Controller
 
             // حذف الصور من التخزين
             foreach ($newsSection->images as $image) {
-                if ($image->image && \Storage::disk('public')->exists($image->image)) {
-                    \Storage::disk('public')->delete($image->image);
+                if ($image->image && Storage::disk('public')->exists($image->image)) {
+                    Storage::disk('public')->delete($image->image);
                 }
                 $image->delete();
             }

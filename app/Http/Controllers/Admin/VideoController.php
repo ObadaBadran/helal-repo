@@ -48,7 +48,7 @@ class VideoController extends Controller
                         'description' => $video->description,
                         'path' => $video->path ? asset($video->path) : null,
                         'youtube_path' => $video->youtube_path,
-                        'cover' => $video->cover,
+                        'cover' => $video->cover ? asset($video->cover) : null,
                     ];
                 }
             );

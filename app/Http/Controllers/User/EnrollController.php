@@ -122,7 +122,7 @@ class EnrollController extends Controller
                 'price' => $enroll->currency === 'AED' ? $course->price_aed : $course->price_usd,
                 'currency' => $enroll->currency,
                 'reviews' => $course->reviews,
-                'image' => $course->image,
+                'image' => $course->image ? asset($course->image) : null,
                 'payment_status' => $enroll->payment_status,
                 'payment_method' => $enroll->payment_method,
                 'transaction_id' => $enroll->transaction_id,

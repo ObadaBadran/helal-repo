@@ -67,6 +67,7 @@ class AuthController extends Controller
             'status' => 'success',
             'message' => 'User registered successfully.',
             'user' => $user,
+            'profile_image_url' => $user->profile_image ? asset($user->profile_image) : null,
             'token' => $token,
         ], 201);
     }
@@ -285,7 +286,7 @@ class AuthController extends Controller
         if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
 
         $validator = Validator::make($request->all(), [
-            'profile_image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'profile_image' => 'required|image|mimes:jpeg,png,jpg,gif',
         ], [
             'profile_image.required' => 'Profile image is required.',
             'profile_image.image' => 'File must be a valid image.',
@@ -305,7 +306,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Profile image updated successfully.',
-            'profile_image_url' => $user->profile_image,
+            'profile_image_url' => asset($user->profile_image)
         ]);
     }
 
@@ -331,7 +332,9 @@ class AuthController extends Controller
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
         }
-
-        return response()->json(['status' => 'success', 'data' => $user]);
+        return response()->json(['status' => 'success', 
+            'data' => $user,
+            'profile_image_url' => $user->profile_image ? asset($user->profile_image) : null
+        ]);
     }
 }

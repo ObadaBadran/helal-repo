@@ -52,7 +52,7 @@ class CourseController extends Controller
                     'price_aed' => $course->price_aed,
                     'price_usd' => $course->price_usd,
                     'reviews' => $course->reviews,
-                    'image' => $course->image,
+                    'image' => $course->image ? asset($course->image) : null,
                     'is_enroll' => $isEnrolled, 
                 ];
             });
