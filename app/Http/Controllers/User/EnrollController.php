@@ -86,10 +86,15 @@ class EnrollController extends Controller
             ],
         ]);
 
+        $enrollment->update([
+            'stripe_session_id' => $session->id,
+        ]);
+
         return response()->json([
             'status' => 'redirect',
             'message' => 'Redirect to Stripe checkout.',
             'redirect_url' => $session->url,
+            'session_id' => $session->id,
         ]);
     }
 

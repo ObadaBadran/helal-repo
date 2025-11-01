@@ -15,6 +15,7 @@ class Enroll extends Model
         'amount',
         'currency',
         'is_enroll',
+        'stripe_session_id',
         'transaction_id',
     ];
 

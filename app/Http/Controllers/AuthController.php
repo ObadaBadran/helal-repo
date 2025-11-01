@@ -27,7 +27,6 @@ class AuthController extends Controller
                 'regex:/[0-9]/', 'regex:/[@$!%*#?&]/',
                 'confirmed',
             ],
-            'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'role' => 'in:admin,user',
         ], [
             'name.required' => 'Name is required.',
@@ -40,16 +39,10 @@ class AuthController extends Controller
             'password.min' => 'Password must be at least 8 characters.',
             'password.regex' => 'Password must contain uppercase, lowercase, number, and special character.',
             'password.confirmed' => 'Password confirmation does not match.',
-            'profile_image.image' => 'Uploaded file must be an image.',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
-        }
-
-        $imagePath = null;
-        if ($request->hasFile('profile_image')) {
-            $imagePath = $request->file('profile_image')->store('profile_images', 'public');
         }
 
         $user = User::create([
@@ -57,7 +50,6 @@ class AuthController extends Controller
             'email' => $request->email,
             'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
-            'profile_image' => '/storage/'. $imagePath,
             'role' => $request->role ?? 'user',
         ]);
 
@@ -67,7 +59,6 @@ class AuthController extends Controller
             'status' => 'success',
             'message' => 'User registered successfully.',
             'user' => $user,
-            'profile_image_url' => $user->profile_image ? asset($user->profile_image) : null,
             'token' => $token,
         ], 201);
     }

@@ -71,9 +71,14 @@ class ConsultationController extends Controller
             ],
         ]);
 
+        $consultation->update([
+            'stripe_session_id' => $session->id,
+        ]);
+
         return response()->json([
             'status' => 'redirect',
             'redirect_url' => $session->url,
+            'session_id' => $session->id,
         ]);
     }
 }

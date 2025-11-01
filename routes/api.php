@@ -306,6 +306,8 @@ Route::get('/videos/{id}', [VideoController::class, 'show']);
 Route::post('/enroll', [EnrollController::class, 'enrollCourse']);
 Route::post('/consultation/checkout', [ConsultationController::class, 'createCheckoutSession']);
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
+Route::get('/stripe/cancel', [StripeWebhookController::class, 'cancel']);
+
 
 Route::middleware('auth:api')->get('/enrolled_courses', [EnrollController::class, 'showEnrollCourses']);
 

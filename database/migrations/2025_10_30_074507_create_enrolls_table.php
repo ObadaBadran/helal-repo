@@ -17,10 +17,11 @@ return new class extends Migration
             ->cascadeOnDelete()->cascadeOnUpdate();
             $table->foreignId('user_id')->constrained('users')
             ->cascadeOnDelete()->cascadeOnUpdate();
-            $table->enum('payment_status', ['pending', 'paid', 'cancelled'])->default('pending');
+            $table->enum('payment_status', ['pending', 'paid', 'canceled'])->default('pending');
             $table->string('payment_method')->nullable(); // card, paypal, wallet...
             $table->decimal('amount', 10, 2)->default(0);
             $table->string('transaction_id')->nullable();
+            $table->string('stripe_session_id')->nullable();
             $table->enum('currency', ['USD', 'AED'])->default('USD');
             $table->boolean('is_enroll')->default(0);
             
