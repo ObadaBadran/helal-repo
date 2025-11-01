@@ -326,51 +326,13 @@ class AuthController extends Controller
         ]);
     }
 
-    public function getUser(Request $request)
-{
-    try {
-        $page = (int) $request->query('page', 1);
-        $perPage = (int) $request->query('per_page', (int) $request->query('sizer', 10));
-
-        $user = auth()->guard('api')->user();
-        if (!$user) {
-            return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
-        }
-
-        // هنا نضع المستخدم في Collection لتطبيق paginate
-        $usersCollection = collect([$user]);
-
-        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
-            $usersCollection->forPage($page, $perPage),
-            $usersCollection->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        $data = $paginated->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'profile_image_url' => $user->profile_image ? asset($user->profile_image) : null,
-            ];
-        });
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $data,
-            'pagination' => [
-                'current_page' => $paginated->currentPage(),
-                'last_page' => $paginated->lastPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-            ]
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json(['status' => 'error', 'message' => 'Something went wrong', 'error' => $e->getMessage()], 500);
-    }
-}
+   public function getUser() { 
+    $user = auth()->guard('api')->user(); 
+    if (!$user) 
+    { 
+        return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
+     } 
+     $result = User::where('users',$user)->get(); 
+     return response()->json(['status' => 'success', 'data' => $result]); }
 
 }
