@@ -17,7 +17,10 @@ use Google\Client as GoogleClient;
 use Google\Service\Calendar as GoogleCalendar;
 use Google\Service\Calendar\Event as GoogleEvent;
 use Carbon\Carbon;
-
+use Illuminate\Support\Str;
+use App\Models\Meeting;
+use App\Models\User;
+/*
 Route::get('/auth/google', function () {
     $client = new GoogleClient();
     $client->setClientId(env('GOOGLE_CLIENT_ID'));
@@ -45,7 +48,7 @@ Route::get('/auth/google/callback', function (Request $request) {
         'access_token' => $token
     ]);
 });
-
+/*
 
 Route::post('/create-meet', function (Request $request) {
     // جلب التوكين من الـ Bearer
@@ -106,6 +109,128 @@ Route::post('/create-meet', function (Request $request) {
         'meet_link' => $createdEvent->getHangoutLink(),
         'start_time' => $start->toDateTimeString(),
         'end_time' => $end->toDateTimeString()
+    ]);
+});
+
+Route::post('/create-meet', function (Request $request) {
+    // مسار JSON Key
+    $serviceAccountPath = storage_path('app/helal-meet-integration-84a7d3fb246b.json');
+
+    if (!file_exists($serviceAccountPath)) {
+        return response()->json(['error' => 'Service account file not found'], 500);
+    }
+
+    // إنشاء Google Client
+    $client = new GoogleClient();
+    $client->setAuthConfig($serviceAccountPath);
+    $client->setScopes([GoogleCalendar::CALENDAR]);
+
+    // مهم: البريد الذي يملك صلاحية إنشاء Google Meet
+    $client->setSubject('obadab2001@gmail.com');
+
+    $service = new GoogleCalendar($client);
+
+    // بيانات الاجتماع من البوستمان
+    $summary = $request->summary ?? 'Meeting';
+    $description = $request->description ?? 'Created via API';
+    $duration = $request->duration ?? 60;
+    $startTime = $request->start_time ? Carbon::parse($request->start_time) : Carbon::now()->addMinute();
+    $endTime = (clone $startTime)->addMinutes($duration);
+
+    // إنشاء الحدث مع Google Meet
+    $event = new GoogleEvent([
+        'summary' => $summary,
+        'description' => $description,
+        'start' => [
+            'dateTime' => $startTime->toAtomString(),
+            'timeZone' => 'UTC'
+        ],
+        'end' => [
+            'dateTime' => $endTime->toAtomString(),
+            'timeZone' => 'UTC'
+        ],
+        'conferenceData' => [
+            'createRequest' => [
+                'requestId' => uniqid(),
+                'conferenceSolutionKey' => ['type' => 'hangoutsMeet']
+            ]
+        ]
+    ]);
+
+    try {
+        $createdEvent = $service->events->insert('primary', $event, [
+            'conferenceDataVersion' => 1
+        ]);
+
+        return response()->json([
+            'message' => 'Event with Meet created successfully ✅',
+            'meet_link' => $createdEvent->getHangoutLink(),
+            'start_time' => $startTime->toDateTimeString(),
+            'end_time' => $endTime->toDateTimeString(),
+        ]);
+    } catch (\Google\Service\Exception $e) {
+        return response()->json([
+            'error' => 'Google API error',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+});*/
+
+Route::post('/create-meet', function(Request $request) {
+    $summary = $request->summary ?? 'Meeting';
+    $startTime = $request->start_time ?? now();
+    $duration = $request->duration ?? 60; // دقائق
+
+    // إنشاء اسم فريد للغرفة
+    $roomName = 'meeting_' . Str::random(10);
+    $meetUrl = "https://meet.jit.si/$roomName";
+
+    // حفظ الاجتماع في DB
+    $meeting = Meeting::create([
+        'summary' => $summary,
+        'start_time' => $startTime,
+        'duration' => $duration,
+        'meet_url' => $meetUrl,
+    ]);
+
+    return response()->json([
+        'message' => 'Meeting created successfully',
+        'meet_url' => $meetUrl,
+        'summary' => $summary,
+        'start_time' => $startTime,
+        'duration' => $duration,
+    ]);
+});
+
+Route::post('/send-meet-emails/{meeting}', function(Request $request, Meeting $meeting) {
+
+    // جلب جميع المستخدمين العاديين
+    $users = User::where('role', 'user')->get();
+
+    foreach ($users as $user) {
+        Mail::raw(
+            "Hello {$user->name},\n\nA new meeting has been scheduled.\n".
+            "Topic: {$meeting->summary}\n".
+            "Start time: {$meeting->start_time}\n".
+            "Duration: {$meeting->duration} minutes\n".
+            "Join via: {$meeting->meet_url}\n\n".
+            "Regards\n\n".
+            "-----------------------------\n\n".
+            "مرحباً {$user->name},\n\nتم تحديد اجتماع جديد.\n".
+            "الموضوع: {$meeting->summary}\n".
+            "وقت البدء: {$meeting->start_time}\n".
+            "المدة: {$meeting->duration} دقيقة\n".
+            "رابط الانضمام: {$meeting->meet_url}\n\n".
+            "مع تحياتنا",
+            function($message) use ($user, $meeting) {
+                $message->to($user->email)
+                        ->subject("New Meeting / اجتماع جديد: {$meeting->summary}");
+            }
+        );
+    }
+
+    return response()->json([
+        'message' => 'Emails sent to all users successfully ✅'
     ]);
 });
 //Auth***************************************************************************************
