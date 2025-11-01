@@ -316,6 +316,8 @@ Route::middleware('auth:api')->get('/enrolled_courses', [EnrollController::class
 
 Route::middleware(['auth:api', 'admin'])->group(function () {
     Route::get('admin/users',[AdminContoller::class, 'getUsers']);
+    Route::get('admin/consultations', [AdminContoller::class, 'getConsultations']);
+    Route::post('admin/consultations/response', [AdminContoller::class, 'addConsultationResponse']);
 });
 
 Route::get('/get/personal-information',[AuthController::class,'getUser']);

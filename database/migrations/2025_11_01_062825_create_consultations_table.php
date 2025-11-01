@@ -17,11 +17,14 @@ return new class extends Migration
             $table->string('name');
             $table->string('email');
             $table->string('phone');
+            $table->enum('currency', ['USD', 'AED'])->default('USD');
             $table->enum('payment_status', ['pending', 'paid', 'canceled'])->default('pending');
             $table->string('payment_method')->default('Stripe');
             $table->string('stripe_session_id')->nullable();
             $table->decimal('amount', 10, 2);
-            $table->string('currency', 10)->default('usd');
+            $table->string('meet_url')->nullable();
+            $table->date('consultation_date')->nullable();
+            $table->time('consultation_time')->nullable();
             $table->timestamps();
         });
     }

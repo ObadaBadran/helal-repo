@@ -16,7 +16,10 @@ class Consultation extends Model
         'payment_method',
         'stripe_session_id',
         'amount',
-        'currency'
+        'currency',
+        'meet_url',
+        'consultation_date',
+        'consultation_time',
     ];
 
     public function user() : BelongsTo {
