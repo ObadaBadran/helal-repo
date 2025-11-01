@@ -329,12 +329,12 @@ class AuthController extends Controller
     public function getUser()
     {
         $user = auth()->guard('api')->user();
+        $user->profile_image = $user->profile_image ? asset($user->profile_image) : null;
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
         }
         return response()->json(['status' => 'success', 
             'data' => $user,
-            'profile_image_url' => $user->profile_image ? asset($user->profile_image) : null
         ]);
     }
 }
