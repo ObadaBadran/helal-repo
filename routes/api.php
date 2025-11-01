@@ -18,6 +18,7 @@ use Google\Service\Calendar\Event as GoogleEvent;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use App\Models\Meeting;
+use App\Models\User;
 /*
 Route::get('/auth/google', function () {
     $client = new GoogleClient();
@@ -197,6 +198,38 @@ Route::post('/create-meet', function(Request $request) {
         'summary' => $summary,
         'start_time' => $startTime,
         'duration' => $duration,
+    ]);
+});
+
+Route::post('/send-meet-emails/{meeting}', function(Request $request, Meeting $meeting) {
+
+    // جلب جميع المستخدمين العاديين
+    $users = User::where('role', 'user')->get();
+
+    foreach ($users as $user) {
+        Mail::raw(
+            "Hello {$user->name},\n\nA new meeting has been scheduled.\n".
+            "Topic: {$meeting->summary}\n".
+            "Start time: {$meeting->start_time}\n".
+            "Duration: {$meeting->duration} minutes\n".
+            "Join via: {$meeting->meet_url}\n\n".
+            "Regards\n\n".
+            "-----------------------------\n\n".
+            "مرحباً {$user->name},\n\nتم تحديد اجتماع جديد.\n".
+            "الموضوع: {$meeting->summary}\n".
+            "وقت البدء: {$meeting->start_time}\n".
+            "المدة: {$meeting->duration} دقيقة\n".
+            "رابط الانضمام: {$meeting->meet_url}\n\n".
+            "مع تحياتنا",
+            function($message) use ($user, $meeting) {
+                $message->to($user->email)
+                        ->subject("New Meeting / اجتماع جديد: {$meeting->summary}");
+            }
+        );
+    }
+
+    return response()->json([
+        'message' => 'Emails sent to all users successfully ✅'
     ]);
 });
 //Auth***************************************************************************************
