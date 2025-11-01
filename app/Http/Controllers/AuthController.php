@@ -326,13 +326,10 @@ class AuthController extends Controller
         ]);
     }
 
-   public function getUser() { 
-    $user = auth()->guard('api')->user(); 
-    if (!$user) 
-    { 
-        return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
-     } 
-     $result = User::where('users',$user)->get(); 
-     return response()->json(['status' => 'success', 'data' => $result]); }
-
+  public function getUser() {
+     $user = auth()->guard('api')->user(); 
+     if (!$user) {
+         return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401); 
+        }
+         return response()->json(['status' => 'success', 'data' => $user, 'profile_image_url' => $user->profile_image ? asset($user->profile_image) : null ]); }
 }
