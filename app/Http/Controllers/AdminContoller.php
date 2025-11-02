@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Consultation;
+use App\Models\Course;
 use App\Models\User;
 use App\Models\Meeting;
 use App\PaginationTrait;
@@ -28,6 +29,17 @@ class AdminContoller extends Controller
 
 
             $usersQuery = User::where('role', 'user')->orderBy('id', 'asc');
+            $users = $usersQuery->paginate($perPage, ['*'], 'page', $page);
+
+            if($request->has('course_id')) {
+                $courseId = $request->query('course_id');
+                $course = Course::find($courseId);
+                if(!$course) return response()->json(['message' => 'Course not found'], 404);
+                $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
+                    $query->where('course_id', $courseId);
+                });
+            }
+
             $users = $usersQuery->paginate($perPage, ['*'], 'page', $page);
 
 

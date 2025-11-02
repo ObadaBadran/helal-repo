@@ -13,6 +13,3 @@
 {{ $isArabic ? 'اذهب إلى الكورس' : 'Go to Course' }}
 @endcomponent
 
-شكراً,<br>
-{{ config('app.name') }}
-@endcomponent
