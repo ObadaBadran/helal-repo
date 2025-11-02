@@ -1,12 +1,12 @@
 @php
-    $isArabic =  $isArabic = ($locale ?? app()->getLocale()) === 'ar';
+    $isArabic = ($locale ?? app()->getLocale()) === 'ar';
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ $isArabic ? 'ar' : 'en' }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>{{ $isArabic ? 'طلب استشارة خاصة جديدة' : 'New Private Consultation Request' }}</title>
+    <title>طلب استشارة خاصة جديدة / New Private Consultation Request</title>
     <style>
         body {
             font-family: 'Tahoma', Arial, sans-serif;
@@ -34,24 +34,38 @@
             color: #999;
             text-align: center;
         }
+        .dual-text {
+            direction: rtl;
+            text-align: right;
+        }
+        .dual-text span.en {
+            display: block;
+            direction: ltr;
+            text-align: left;
+            color: #555;
+        }
     </style>
 </head>
 <body>
 <div class="email-container">
-    <h2>{{ $isArabic ? 'تفاصيل الاستشارة المدفوعة' : 'Paid Consultation Details' }}</h2>
 
-    <p>
-        {{ $isArabic ? 'تم استلام طلب استشارة مدفوعة جديدة من:' : 'A new paid consultation has been received from:' }}
+    <h2>تفاصيل الاستشارة المدفوعة / <span style="color:#007bff;">Paid Consultation Details</span></h2>
+
+    <p class="dual-text">
+        تم استلام طلب استشارة مدفوعة جديدة من:  
+        <span class="en">A new paid consultation has been received from:</span>
     </p>
 
-    <p><strong>{{ $isArabic ? 'الاسم:' : 'Name:' }}</strong> {{ $consultation->name }}</p>
-    <p><strong>{{ $isArabic ? 'البريد الإلكتروني:' : 'Email:' }}</strong> {{ $consultation->email }}</p>
-    <p><strong>{{ $isArabic ? 'رقم الهاتف:' : 'Phone:' }}</strong> {{ $consultation->phone }}</p>
-    <p><strong>{{ $isArabic ? 'المبلغ:' : 'Amount:' }}</strong> {{ $consultation->amount }} {{ $consultation->currency }}</p>
+    <p class="dual-text"><strong>الاسم (Name):</strong> {{ $consultation->name }}</p>
+    <p class="dual-text"><strong>البريد الإلكتروني (Email):</strong> {{ $consultation->email }}</p>
+    <p class="dual-text"><strong>رقم الهاتف (Phone):</strong> {{ $consultation->phone }}</p>
+    <p class="dual-text"><strong>المبلغ (Amount):</strong> {{ $consultation->amount }} {{ $consultation->currency }}</p>
 
-    <div class="footer">
-        {{ $isArabic ? 'شكراً لتعاملك معنا.' : 'Thank you for choosing our service.' }}
+    <div class="footer dual-text">
+        شكراً لتعاملك معنا.  
+        <span class="en">Thank you for choosing our service.</span>
     </div>
+
 </div>
 </body>
 </html>
