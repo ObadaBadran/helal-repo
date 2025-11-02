@@ -56,7 +56,7 @@ Route::post('/create-meet', function(Request $request) {
     ]);
 });
 
-Route::post('/send-meet-emails/{meeting}', function(Request $request, Meeting $meeting) {
+Route::post('/admin/send-meet-emails/{meeting}', function(Request $request, Meeting $meeting) {
 
 
     $userIds = $request->input('user_ids');

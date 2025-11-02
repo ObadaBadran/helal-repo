@@ -61,7 +61,7 @@ class NewsSectionSeeder extends Seeder
             foreach ($sec['images'] as $img) {
                 NewsSectionImage::create([
                     'news_section_id' => $section->id,
-                    'image' => $img
+                    'image' => '' . $img
                 ]);
             }
         }

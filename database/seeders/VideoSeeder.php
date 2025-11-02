@@ -23,7 +23,7 @@ class VideoSeeder extends Seeder
                 'subTitle_ar' => 'البدء مع لارافيل',
                 'description_en' => 'This video explains the Laravel setup and basic project structure.',
                 'description_ar' => 'هذا الفيديو يشرح إعداد لارافيل وهيكل المشروع الأساسي.',
-                //'cover' => 'covers-seed/laravel_intro.png',
+                'cover' => 'covers-seed/laravel_intro.png',
             ],
             [
                 'course_id' => 1,
@@ -35,7 +35,7 @@ class VideoSeeder extends Seeder
                 'subTitle_ar' => 'تعلم الروتنج والكونترولرز',
                 'description_en' => 'Detailed explanation of Laravel routes and how to use them.',
                 'description_ar' => 'شرح مفصل للروتنج في لارافيل وكيفية استخدامها.',
-               // 'cover' => 'covers-seed/laravel_routing.png',
+                'cover' => 'covers-seed/laravel_routing.png',
             ],
             [
                 'course_id' => 2,
@@ -47,12 +47,14 @@ class VideoSeeder extends Seeder
                 'subTitle_ar' => 'إنشاء مكونات قابلة لإعادة الاستخدام',
                 'description_en' => 'Learn to create and reuse React components effectively.',
                 'description_ar' => 'تعلم كيفية إنشاء وإعادة استخدام مكونات React بفعالية.',
-               // 'cover' => 'covers-seed/react_components.png',
+                'cover' => 'covers-seed/react_components.png',
             ],
         ];
 
         foreach ($videos as $video) {
-            Video::create($video);
-        }
+    $video['path'] = '/storage/' . $video['path'];
+    $video['cover'] = '/storage/' . $video['cover'];
+    Video::create($video);
+}
     }
 }

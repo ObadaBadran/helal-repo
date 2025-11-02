@@ -39,8 +39,9 @@ class CourseSeeder extends Seeder
             ],
         ];
 
-        foreach ($courses as $course) {
-            Course::create($course);
-        }
+       foreach ($courses as $course) {
+    $course['image'] = '/storage/' . $course['image']; // إضافة /storage/
+    Course::create($course);
+}
     }
 }
