@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Consultation;
 use App\Models\User;
+use App\Models\Meeting;
 use App\PaginationTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -18,18 +19,18 @@ class AdminContoller extends Controller
     public function getUsers(Request $request)
     {
         try {
-        
+
             $lang = $request->query('lang', 'en');
 
-        
+
             $page = (int) $request->query('page', 1);
             $perPage = (int) $request->query('per_page', (int) $request->query('sizer', 10));
 
-        
+
             $usersQuery = User::where('role', 'user')->orderBy('id', 'asc');
             $users = $usersQuery->paginate($perPage, ['*'], 'page', $page);
 
-        
+
             $data = $users->map(function ($user) use ($lang) {
                 return [
                     'id' => $user->id,
@@ -37,7 +38,7 @@ class AdminContoller extends Controller
                     'email' => $user->email,
                     'role' => $user->role,
                     'is_active' => $user->is_active,
-                
+
                 ];
             });
 
@@ -53,7 +54,7 @@ class AdminContoller extends Controller
                     'last_page' => $users->lastPage(),
                     'per_page' => $users->perPage(),
                     'total' => $users->total(),
-            
+
                 ]
             ]);
         } catch (Exception $e) {
@@ -64,45 +65,18 @@ class AdminContoller extends Controller
         }
     }
 
-    public function getConsultations(Request $request)
+    public function getMeetings()
     {
-        $admin = auth('api')->user();
-        if($admin->role != 'admin') {
-            return response()->json(['message' => "You don't have permission to login"], 401);
-        }
-        if (!$admin) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $meetings = Meeting::all();
 
-        $query = Consultation::with('user:id,name,email')
-        ->where('payment_status', 'paid')
-        ->orderBy('created_at', 'desc');
-
-        $response = $this->paginateResponse($request, $query, 'Consultations', function ($consultation) {
-            return [
-                'id' => $consultation->id,
-                'name' => $consultation->name,
-                'email' => $consultation->email,
-                'phone' => $consultation->phone,
-                'payment_status' => $consultation->payment_status,
-                'amount' => $consultation->amount,
-                'meet_url' => $consultation->meet_url,
-                'consultation_date' => $consultation->consultation_date  ?? null ,
-                'consultation_time' => $consultation->consultation_time ?? null,
-                'user' => [
-                    'id' => $consultation->user?->id,
-                    'name' => $consultation->user?->name,
-                    'email' => $consultation->user?->email,
-                ],
-                'created_at' => $consultation->created_at->toDateTimeString(),
-            ];
-        });
-
-        return response()->json($response);
+        return response()->json([
+            'message' => 'Meetings have been successfully retrieved ✅',
+            'data' => $meetings
+        ], 200);
     }
 
     public function addConsultationResponse(Request $request) {
-        
+
         try {
         $validatedData = $request->validate([
             'consultation_id' => 'required|integer|exists:consultations,id',
@@ -140,7 +114,7 @@ class AdminContoller extends Controller
                 'locale' => $locale,
             ], function ($message) use ($consultation, $isArabic) {
                 $message->to($consultation->email)
-                        ->subject($isArabic 
+                        ->subject($isArabic
                             ? 'تفاصيل استشارتك الخاصة'
                             : 'Your Private Consultation Details');
             });
@@ -154,9 +128,11 @@ class AdminContoller extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => $isArabic 
-                ? 'تم إرسال تفاصيل الاستشارة إلى البريد الإلكتروني للمستخدم.' 
+            'message' => $isArabic
+                ? 'تم إرسال تفاصيل الاستشارة إلى البريد الإلكتروني للمستخدم.'
                 : 'Consultation details sent to user email.',
         ]);
     }
+
+
 }
