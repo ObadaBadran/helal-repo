@@ -102,7 +102,8 @@ class CourseController extends Controller
             $users = User::where('role', 'user')->get();
 
             foreach ($users as $user) {
-                Mail::to($user->email)->send(new NewCourseMail($course, $user));
+                $courseUrl = $request->input('course_url');
+                Mail::to($user->email)->send(new NewCourseMail($course, $user, $courseUrl));
             }
 
             return response()->json([
