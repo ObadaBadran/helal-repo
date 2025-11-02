@@ -40,7 +40,7 @@ class VideoSeeder extends Seeder
             [
                 'course_id' => 2,
                 'path' => 'videos-seed/laravel_intro',
-                'youtube_path' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                'youtube_path' => 'https://www.youtube.com/watch?v=fbOUrAFzvpw',
                 'title_en' => 'React Components',
                 'title_ar' => 'مكونات React',
                 'subTitle_en' => 'Creating reusable components',

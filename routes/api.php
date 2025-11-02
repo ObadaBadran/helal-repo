@@ -58,16 +58,13 @@ Route::post('/create-meet', function(Request $request) {
 
 Route::post('/admin/send-meet-emails/{meeting}', function(Request $request, Meeting $meeting) {
 
-
     $userIds = $request->input('user_ids');
 
     if ($userIds && is_array($userIds)) {
-
         $users = User::where('role', 'user')
             ->whereIn('id', $userIds)
             ->get();
     } else {
-
         $users = User::where('role', 'user')->get();
     }
 
@@ -78,20 +75,24 @@ Route::post('/admin/send-meet-emails/{meeting}', function(Request $request, Meet
         ], 404);
     }
 
+    $roomId = basename($meeting->meet_url);
+    $joinUrl = "http://localhost:5173/Helal-Aljaberi/{$roomId}"; 
+
     foreach ($users as $user) {
+
         Mail::raw(
             "Hello {$user->name},\n\nA new meeting has been scheduled.\n".
             "Topic: {$meeting->summary}\n".
             "Start time: {$meeting->start_time}\n".
             "Duration: {$meeting->duration} minutes\n".
-            "Join via: {$meeting->meet_url}\n\n".
-            "Regards\n\n".
+            "Join via: {$joinUrl}\n\n".
+            "Regards\n".
             "-----------------------------\n\n".
             "مرحباً {$user->name},\n\nتم تحديد اجتماع جديد.\n".
             "الموضوع: {$meeting->summary}\n".
             "وقت البدء: {$meeting->start_time}\n".
             "المدة: {$meeting->duration} دقيقة\n".
-            "رابط الانضمام: {$meeting->meet_url}\n\n".
+            "رابط الانضمام: {$joinUrl}\n\n".
             "مع تحياتنا",
             function($message) use ($user, $meeting) {
                 $message->to($user->email)
@@ -102,10 +103,11 @@ Route::post('/admin/send-meet-emails/{meeting}', function(Request $request, Meet
 
     return response()->json([
         'status' => true,
-        'message' => 'Emails sent successfully ',
+        'message' => 'Emails sent successfully',
         'sent_to_count' => $users->count()
     ]);
 })->middleware('admin');
+
 //Auth***************************************************************************************
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
