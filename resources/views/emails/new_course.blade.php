@@ -1,14 +1,18 @@
-<!DOCTYPE html>
-<html lang="{{ $isArabic ? 'ar' : 'en' }}" dir="{{ $isArabic ? 'rtl' : 'ltr' }}">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ $isArabic ? 'كورس جديد' : 'New Course' }}</title>
-</head>
-<body>
-    <h2>{{ $isArabic ? 'تم إضافة كورس جديد:' : 'A New Course Has Been Added:' }}</h2>
-    <p><strong>{{ $isArabic ? 'العنوان:' : 'Title:' }}</strong> {{ $isArabic ? $course->title_ar : $course->title_en }}</p>
-    <p><strong>{{ $isArabic ? 'الوصف:' : 'Description:' }}</strong> {{ $isArabic ? $course->description_ar : $course->description_en }}</p>
-    <p><strong>{{ $isArabic ? 'السعر:' : 'Price:' }}</strong> {{ $course->price_usd }} USD | {{ $course->price_aed }} AED</p>
-    <p>{{ $isArabic ? 'سارع بالتسجيل الآن!' : 'Enroll now!' }}</p>
-</body>
-</html>
+@component('mail::message')
+# {{ $isArabic ? 'تم إضافة كورس جديد' : 'New Course Available' }}
+
+**{{ $isArabic ? 'العنوان بالعربية:' : 'Title (Arabic):' }}** {{ $course->title_ar }}  
+**{{ $isArabic ? 'العنوان بالإنجليزية:' : 'Title (English):' }}** {{ $course->title_en }}
+
+**{{ $isArabic ? 'الوصف بالعربية:' : 'Description (Arabic):' }}** {{ $course->description_ar }}  
+**{{ $isArabic ? 'الوصف بالإنجليزية:' : 'Description (English):' }}** {{ $course->description_en }}
+
+**{{ $isArabic ? 'السعر:' : 'Price:' }}** {{ $course->price_usd }} USD | {{ $course->price_aed }} AED
+
+@component('mail::button', ['url' => $courseUrl])
+{{ $isArabic ? 'اذهب إلى الكورس' : 'Go to Course' }}
+@endcomponent
+
+شكراً,<br>
+{{ config('app.name') }}
+@endcomponent
