@@ -297,7 +297,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Profile image updated successfully.',
-            'profile_image_url' => asset($user->profile_image)
+            'profile_image_url' => $user->image ? asset($user->profile_image) : null
         ]);
     }
 

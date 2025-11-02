@@ -83,6 +83,7 @@ class EnrollController extends Controller
             'metadata' => [
                 'order_id' => $enrollment->id,
                 'user_id' => $user->id,
+                'course_id' => $course->id,
             ],
         ]);
 
@@ -124,13 +125,8 @@ class EnrollController extends Controller
                 'title' => $lang === 'ar' ? $course->title_ar : $course->title_en,
                 'subTitle' => $lang === 'ar' ? $course->subTitle_ar : $course->subTitle_en,
                 'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
-                'price' => $enroll->currency === 'AED' ? $course->price_aed : $course->price_usd,
-                'currency' => $enroll->currency,
                 'reviews' => $course->reviews,
                 'image' => $course->image ? asset($course->image) : null,
-                'payment_status' => $enroll->payment_status,
-                'payment_method' => $enroll->payment_method,
-                'transaction_id' => $enroll->transaction_id,
                 'is_enrolled' => $enroll->is_enroll,
                 'enrolled_at' => $enroll->created_at->format('Y-m-d H:i:s')
             ];

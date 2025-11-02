@@ -45,8 +45,9 @@ class StripeWebhookController extends Controller
 
                     $course = Course::find($session->metadata->course_id);
                     if ($course) {
-                        $course->reviews++;
+                        $course->reviews = $course->reviews + 1;
                         $course->save();
+                        
                     }
 
                     Log::info('Enrollment payment completed.', ['enrollment_id' => $enrollment->id]);

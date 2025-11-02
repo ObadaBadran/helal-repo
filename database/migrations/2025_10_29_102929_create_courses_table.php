@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('description_ar')->nullable();
             $table->decimal('price_aed', 10, 2)->default(0);
             $table->decimal('price_usd', 10, 2)->default(0);
-            $table->integer('reviews');
+            $table->integer('reviews')->default(0);
             $table->string('image')->nullable();
             $table->timestamps();
         });
