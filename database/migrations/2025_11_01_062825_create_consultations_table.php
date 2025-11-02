@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('stripe_session_id')->nullable();
             $table->decimal('amount', 10, 2);
             $table->string('meet_url')->nullable();
+            $table->boolean('is_done')->default(false);
             $table->date('consultation_date')->nullable();
             $table->time('consultation_time')->nullable();
             $table->timestamps();
