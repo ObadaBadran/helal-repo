@@ -68,6 +68,9 @@ class AdminContoller extends Controller
     public function getMeetings()
     {
         $meetings = Meeting::all();
+        if ($meetings->isEmpty()) {
+            return response()->json(['message' => 'No meetings found.'], 404);
+        }
 
         return response()->json([
             'message' => 'Meetings have been successfully retrieved ✅',
