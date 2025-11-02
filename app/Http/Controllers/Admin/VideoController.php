@@ -78,7 +78,7 @@ class VideoController extends Controller
             $validatedData = $request->validate([
                 'course_id' => 'required|exists:courses,id',
                 'path' => 'required_without:youtube_path|file|mimes:mp4,mov,avi',
-                'youtube_path' => 'required_without:path|string|max:255|required_without:path',
+                'youtube_path' => 'required_without:path|string|max:255',
                 'title_en' => 'required|string|max:255',
                 'title_ar' => 'required|string|max:255',
                 'subTitle_en' => 'nullable|string|max:255',

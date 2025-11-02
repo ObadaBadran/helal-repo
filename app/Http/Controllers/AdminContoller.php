@@ -149,5 +149,12 @@ class AdminContoller extends Controller
         ]);
     }
 
+    public function getConsultations() {
+        
+    }
+
+    public function searchUser() {
+        
+    }
 
 }
