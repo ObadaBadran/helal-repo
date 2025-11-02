@@ -20,6 +20,7 @@ class Consultation extends Model
         'meet_url',
         'consultation_date',
         'consultation_time',
+        'is_done',
     ];
 
     public function user() : BelongsTo {
