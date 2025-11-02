@@ -19,12 +19,14 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email:rfc,dns|max:255|unique:users,email',
             'phone_number' => 'required|string|unique:users,phone_number',
             'password' => [
                 'required', 'string', 'min:8',
-                'regex:/[a-z]/', 'regex:/[A-Z]/',
-                'regex:/[0-9]/', 'regex:/[@$!%*#?&]/',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[@$!%*#?&]/',
                 'confirmed',
             ],
             'role' => 'in:admin,user',
@@ -39,10 +41,15 @@ class AuthController extends Controller
             'password.min' => 'Password must be at least 8 characters.',
             'password.regex' => 'Password must contain uppercase, lowercase, number, and special character.',
             'password.confirmed' => 'Password confirmation does not match.',
+            'role.in' => 'Role must be either admin or user.',
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+            return response()->json([
+                'status' => 'error',
+                'message' => $validator->errors()->first(),
+
+            ], 422);
         }
 
         $user = User::create([
@@ -62,6 +69,7 @@ class AuthController extends Controller
             'token' => $token,
         ], 201);
     }
+
 
     // Login user
     public function login(Request $request)
@@ -324,7 +332,7 @@ class AuthController extends Controller
         if (!$user) {
             return response()->json(['status' => 'error', 'message' => 'Token is invalid or missing.'], 401);
         }
-        return response()->json(['status' => 'success', 
+        return response()->json(['status' => 'success',
             'data' => $user,
         ]);
     }
