@@ -46,8 +46,25 @@ Route::post('/create-meet', function(Request $request) {
 
 Route::post('/send-meet-emails/{meeting}', function(Request $request, Meeting $meeting) {
 
-    // جلب جميع المستخدمين العاديين
-    $users = User::where('role', 'user')->get();
+
+    $userIds = $request->input('user_ids');
+
+    if ($userIds && is_array($userIds)) {
+
+        $users = User::where('role', 'user')
+            ->whereIn('id', $userIds)
+            ->get();
+    } else {
+
+        $users = User::where('role', 'user')->get();
+    }
+
+    if ($users->isEmpty()) {
+        return response()->json([
+            "status" => false,
+            "message" => "No users found to send email."
+        ], 404);
+    }
 
     foreach ($users as $user) {
         Mail::raw(
@@ -66,15 +83,17 @@ Route::post('/send-meet-emails/{meeting}', function(Request $request, Meeting $m
             "مع تحياتنا",
             function($message) use ($user, $meeting) {
                 $message->to($user->email)
-                        ->subject("New Meeting / اجتماع جديد: {$meeting->summary}");
+                    ->subject("New Meeting / اجتماع جديد: {$meeting->summary}");
             }
         );
     }
 
     return response()->json([
-        'message' => 'Emails sent to all users successfully ✅'
+        'status' => true,
+        'message' => 'Emails sent successfully ',
+        'sent_to_count' => $users->count()
     ]);
-});
+})->middleware('admin');
 //Auth***************************************************************************************
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
