@@ -33,7 +33,7 @@ class NewCourseMail extends Mailable
         $isArabic = $this->user->locale === 'ar';
 
         return $this->subject($isArabic ? 'تم إضافة كورس جديد' : 'New Course Available')
-                    ->view('emails.new_course')
+                    ->markdown('emails.new_course')
                     ->with([
                         'course' => $this->course,
                         'isArabic' => $isArabic,
