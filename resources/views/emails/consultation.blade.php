@@ -1,5 +1,5 @@
 @php
-    $isArabic = $locale === 'ar';
+    $isArabic =  $isArabic = ($locale ?? app()->getLocale()) === 'ar';
 @endphp
 
 <!DOCTYPE html>
