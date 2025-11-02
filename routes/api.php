@@ -74,7 +74,7 @@ Route::post('/send-meet-emails/{meeting}', function(Request $request, Meeting $m
     return response()->json([
         'message' => 'Emails sent to all users successfully ✅'
     ]);
-});
+})->middleware('admin');
 //Auth***************************************************************************************
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
