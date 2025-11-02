@@ -195,8 +195,57 @@ class AdminContoller extends Controller
         }
     }
 
-    public function searchUser() {
-        
+    public function searchUser(Request $request)
+    {
+        try {
+            $query = $request->query('query');
+            if (!$query) {
+                return response()->json([
+                    'message' => 'Please provide a search query.'
+                ], 400);
+            }
+
+            $page = (int) $request->query('page', 1);
+            $perPage = (int) $request->query('per_page', 10);
+
+            $usersQuery = User::where('role', 'user')
+                            ->where('name', 'like', "%{$query}%")
+            ->orderBy('id', 'asc');
+
+            $users = $usersQuery->paginate($perPage, ['*'], 'page', $page);
+
+            $data = $users->getCollection()->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone' => $user->phone_number,
+                    'role' => $user->role,
+                    'is_active' => $user->is_active,
+                ];
+            });
+
+            if ($data->isEmpty()) {
+                return response()->json(['message' => 'No users found.'], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'data' => $data,
+                'pagination' => [
+                    'current_page' => $users->currentPage(),
+                    'last_page' => $users->lastPage(),
+                    'per_page' => $users->perPage(),
+                    'total' => $users->total(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Something went wrong.',
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
+
 
 }

@@ -192,6 +192,8 @@ Route::middleware(['auth:api', 'admin'])->group(function () {
     Route::get('admin/consultations', [AdminContoller::class, 'getConsultations']);
     Route::post('admin/consultations/response', [AdminContoller::class, 'addConsultationResponse']);
     Route::get('admin/meetings',[AdminContoller::class, 'getMeetings']);
+    Route::get('admin/meetings',[AdminContoller::class, 'getMeetings']);
+    Route::get('admin/users/search', [AdminContoller::class, 'searchUser']);
 
 });
 

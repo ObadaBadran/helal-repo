@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
+use Laravel\Scout\Searchable;
 
 class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
+    use Searchable;
 
     /**
      * The attributes that are mass assignable.
@@ -73,5 +75,13 @@ class User extends Authenticatable implements JWTSubject
 
     public function consultations() : HasMany {
         return $this->hasMany(Consultation::class, 'user_id');
+    }
+
+    public function toSearchsearchableArray(): array
+    {
+        return [
+            'name' => $this->name,
+            'user_id' => $this->user_id,
+        ];
     }
 }
