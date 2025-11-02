@@ -21,19 +21,31 @@ use App\Models\User;
 Route::post('/create-meet', function(Request $request) {
     $summary = $request->summary ?? 'Meeting';
     $startTime = $request->start_time ?? now();
-    $duration = $request->duration ?? 60; // دقائق
+    $duration = $request->duration ?? 60; 
 
-    // إنشاء اسم فريد للغرفة
+   
     $roomName = 'meeting_' . Str::random(10);
     $meetUrl = "https://meet.jit.si/$roomName";
 
-    // حفظ الاجتماع في DB
+   
     $meeting = Meeting::create([
         'summary' => $summary,
         'start_time' => $startTime,
         'duration' => $duration,
         'meet_url' => $meetUrl,
     ]);
+
+  
+    $totalMeetings = Meeting::count();
+    if ($totalMeetings > 10) {
+        $toDelete = Meeting::orderBy('created_at', 'asc')
+            ->take($totalMeetings - 10)
+            ->get();
+
+        foreach ($toDelete as $oldMeeting) {
+            $oldMeeting->delete();
+        }
+    }
 
     return response()->json([
         'message' => 'Meeting created successfully',
