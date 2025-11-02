@@ -15,7 +15,7 @@ class VideoSeeder extends Seeder
         $videos = [
             [
                 'course_id' => 1,
-                'path' => 'videos-seed/laravel_intro.mp4',
+                'path' => 'videos-seed/laravel_intro',
                 'youtube_path' => null,
                 'title_en' => 'Introduction to Laravel',
                 'title_ar' => 'مقدمة في لارافيل',
@@ -27,7 +27,7 @@ class VideoSeeder extends Seeder
             ],
             [
                 'course_id' => 1,
-                'path' => 'videos-seed/laravel_routing.mp4',
+                'path' => 'videos-seed/laravel_routing',
                 'youtube_path' => null,
                 'title_en' => 'Routing in Laravel',
                 'title_ar' => 'الروتنج في لارافيل',
@@ -39,7 +39,7 @@ class VideoSeeder extends Seeder
             ],
             [
                 'course_id' => 2,
-                'path' => 'videos-seed/laravel_intro.mp4',
+                'path' => 'videos-seed/laravel_intro',
                 'youtube_path' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
                 'title_en' => 'React Components',
                 'title_ar' => 'مكونات React',
@@ -52,7 +52,7 @@ class VideoSeeder extends Seeder
         ];
 
         foreach ($videos as $video) {
-    $video['path'] = '/storage/' . $video['path'];
+   $video['path'] = ('/storage/' . $video['path'] . '.mp4'); 
     $video['cover'] = '/storage/' . $video['cover'];
     Video::create($video);
 }
