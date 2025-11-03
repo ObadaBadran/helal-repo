@@ -76,7 +76,7 @@ Route::post('/admin/send-meet-emails/{meeting}', function(Request $request, Meet
     }
 
     $roomId = basename($meeting->meet_url);
-    $joinUrl = "http://localhost:5173/Helal-Aljaberi/{$roomId}"; 
+    $joinUrl = "http://localhost:5173/Helal-Aljaberi/meet/{$roomId}"; 
 
     foreach ($users as $user) {
 
