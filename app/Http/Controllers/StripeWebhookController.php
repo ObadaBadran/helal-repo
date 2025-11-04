@@ -9,6 +9,7 @@ use Stripe\Webhook;
 use App\Models\Enroll;
 use App\Models\Consultation;
 use App\Models\Course;
+use App\Models\CourseOnline;
 
 class StripeWebhookController extends Controller
 {
@@ -31,11 +32,14 @@ class StripeWebhookController extends Controller
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
+        $session = $event->data->object;
+
+        // === Payment completed ===
         if ($event->type === 'checkout.session.completed') {
-            $session = $event->data->object;
 
             if (isset($session->metadata->order_id)) {
                 $enrollment = Enroll::find($session->metadata->order_id);
+
                 if ($enrollment && $enrollment->payment_status !== 'paid') {
                     $enrollment->update([
                         'payment_status' => 'paid',
@@ -43,17 +47,33 @@ class StripeWebhookController extends Controller
                         'stripe_session_id' => $session->id,
                     ]);
 
-                    $course = Course::find($session->metadata->course_id);
-                    if ($course) {
-                        $course->reviews = $course->reviews + 1;
-                        $course->save();
-                        
+                    // كورس عادي
+                    if (!empty($session->metadata->course_id)) {
+                        $course = Course::find($session->metadata->course_id);
+                        if ($course) {
+                            $course->reviews++;
+                            $course->save();
+                            Log::info('Regular course enrollment completed.', [
+                                'enrollment_id' => $enrollment->id,
+                                'course_id' => $course->id
+                            ]);
+                        }
                     }
 
-                    Log::info('Enrollment payment completed.', ['enrollment_id' => $enrollment->id]);
+                    // كورس أونلاين
+                    if (!empty($session->metadata->course_online_id)) {
+                        $courseOnline = CourseOnline::find($session->metadata->course_online_id);
+                        if ($courseOnline) {
+                            Log::info('Online course enrollment completed.', [
+                                'enrollment_id' => $enrollment->id,
+                                'course_online_id' => $courseOnline->id
+                            ]);
+                        }
+                    }
                 }
             }
 
+            // استشارات
             if (isset($session->metadata->consultation_id)) {
                 $consultation = Consultation::find($session->metadata->consultation_id);
                 if ($consultation && $consultation->payment_status !== 'paid') {
@@ -79,8 +99,8 @@ class StripeWebhookController extends Controller
             }
         }
 
+        // === Session expired ===
         if ($event->type === 'checkout.session.expired') {
-            $session = $event->data->object;
 
             if (isset($session->metadata->order_id)) {
                 $enrollment = Enroll::find($session->metadata->order_id);

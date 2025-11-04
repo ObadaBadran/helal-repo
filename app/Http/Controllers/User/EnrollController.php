@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\CourseOnline;
 use App\Models\Enroll;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,82 +23,98 @@ class EnrollController extends Controller
 {
 
     public function enrollCourse(Request $request)
-    {
-        $user = auth('api')->user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        try {
-            $validatedData = $request->validate([
-                'course_id' => 'required|integer|exists:courses,id',
-                'currency' => 'nullable|string',
-                'return_url' => 'required|url',
-                'cancel_url' => 'required|url',
-            ]);
-        }catch(ValidationException $e) {
-            return response()->json([
-                'status' => 'error',
-                'errors' => $e->errors()
-            ], 422);
-        }
-
-        $course = Course::findOrFail($validatedData['course_id']);
-        $currency = $validatedData['currency'] ?? 'usd';
-        $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
-
-        if (Enroll::where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->where('payment_status', 'paid')
-            ->exists()) {
-            return response()->json(['status' => 'info', 'message' => 'You are already enrolled in this course.'], 409);
-        }
-
-        $enrollment = Enroll::create([
-            'course_id' => $course->id,
-            'user_id' => $user->id,
-            'payment_status' => 'pending',
-            'payment_method' => 'Stripe',
-            'amount' => $amount,
-            'currency' => strtoupper($currency),
-            'is_enroll' => false,
-        ]);
-
-        Stripe::setApiKey(env('STRIPE_SECRET'));
-
-        $session = StripeSession::create([
-            'payment_method_types' => ['card'],
-            'line_items' => [[
-                'price_data' => [
-                    'currency' => strtolower($currency),
-                    'unit_amount' => intval($amount * 100),
-                    'product_data' => [
-                        'name' => 'Course: ' . $course->title,
-                    ],
-                ],
-                'quantity' => 1,
-            ]],
-            'mode' => 'payment',
-            'success_url' => $validatedData['return_url'] . '?order_id=' . $enrollment->id,
-            'cancel_url' => $validatedData['cancel_url'],
-            'metadata' => [
-                'order_id' => $enrollment->id,
-                'user_id' => $user->id,
-                'course_id' => $course->id,
-            ],
-        ]);
-
-        $enrollment->update([
-            'stripe_session_id' => $session->id,
-        ]);
-
-        return response()->json([
-            'status' => 'redirect',
-            'message' => 'Redirect to Stripe checkout.',
-            'redirect_url' => $session->url,
-            'session_id' => $session->id,
-        ]);
+{
+    $user = auth('api')->user();
+    if (!$user) {
+        return response()->json(['message' => 'Unauthorized'], 401);
     }
+
+    try {
+        $validatedData = $request->validate([
+            'course_id' => 'nullable|integer|exists:courses,id',
+            'course_online_id' => 'nullable|integer|exists:course_online,id',
+            'currency' => 'nullable|string',
+            'return_url' => 'required|url',
+            'cancel_url' => 'required|url',
+        ]);
+    } catch (ValidationException $e) {
+        return response()->json([
+            'status' => 'error',
+            'errors' => $e->errors()
+        ], 422);
+    }
+
+    if (!$request->course_id && !$request->course_online_id) {
+        return response()->json(['status' => 'error', 'message' => 'Course type missing'], 422);
+    }
+
+    $currency = $validatedData['currency'] ?? 'usd';
+
+    if ($request->course_id) {
+        // === كورس عادي ===
+        $course = Course::findOrFail($validatedData['course_id']);
+        $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
+        $productName = "Course: " . $course->title_en;
+    } else {
+        // === كورس أونلاين ===
+        $course = CourseOnline::findOrFail($validatedData['course_online_id']);
+        $amount = $course->price;
+        $productName = "Online Course: " . $course->name;
+    }
+
+    // تحقق إن كان مسجل سابقًا
+    if (Enroll::where('user_id', $user->id)
+        ->when($request->course_id, fn($q)=> $q->where('course_id', $request->course_id))
+        ->when($request->course_online_id, fn($q)=> $q->where('course_online_id', $request->course_online_id))
+        ->where('payment_status', 'paid')
+        ->exists()) {
+        return response()->json(['status' => 'info', 'message' => 'Already enrolled'], 409);
+    }
+
+    $enrollment = Enroll::create([
+        'course_id' => $request->course_id,
+        'course_online_id' => $request->course_online_id,
+        'user_id' => $user->id,
+        'payment_status' => 'pending',
+        'payment_method' => 'Stripe',
+        'amount' => $amount,
+        'currency' => strtoupper($currency),
+        'is_enroll' => false,
+    ]);
+
+    Stripe::setApiKey(env('STRIPE_SECRET'));
+
+    $session = StripeSession::create([
+        'payment_method_types' => ['card'],
+        'line_items' => [[
+            'price_data' => [
+                'currency' => strtolower($currency),
+                'unit_amount' => intval($amount * 100),
+                'product_data' => [
+                    'name' => $productName,
+                ],
+            ],
+            'quantity' => 1,
+        ]],
+        'mode' => 'payment',
+        'success_url' => $validatedData['return_url'] . '?order_id=' . $enrollment->id,
+        'cancel_url' => $validatedData['cancel_url'],
+        'metadata' => [
+            'order_id' => $enrollment->id,
+            'user_id' => $user->id,
+            'course_id' => $request->course_id,
+            'course_online_id' => $request->course_online_id,
+        ],
+    ]);
+
+    $enrollment->update(['stripe_session_id' => $session->id]);
+
+    return response()->json([
+        'status' => 'redirect',
+        'redirect_url' => $session->url,
+        'session_id' => $session->id,
+    ]);
+}
 
     public function showEnrollCourses(Request $request)
     {

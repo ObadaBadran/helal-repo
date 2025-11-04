@@ -12,6 +12,8 @@ use App\Http\Controllers\AdminContoller;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\User\EnrollController;
+use App\Http\Controllers\Admin\CourseOnlineController;
+
 use Illuminate\Support\Facades\Mail;
 
 use Illuminate\Support\Str;
@@ -198,3 +200,16 @@ Route::middleware(['auth:api', 'admin'])->group(function () {
 });
 
 Route::get('/get/personal-information',[AuthController::class,'getUser']);
+//courses-online======================================================================
+Route::get('/courses-online/get',[CourseOnlineController::class,'index']);
+Route::get('/courses-online/show/{course}',[CourseOnlineController::class,'show']);
+Route::get('/courses-online/get-my-courses',[CourseOnlineController::class,'myCourses']);
+
+
+Route::middleware(['auth:api','admin'])->group(function () {
+    Route::post('admin/online-course/add',[CourseOnlineController::class,'store']);
+    Route::post('admin/online-course/add-meet/{course}',[CourseOnlineController::class,'addMeetUrl']);
+    Route::post('admin/online-course/update/{course}',[CourseOnlineController::class,'update']);
+    Route::delete('admin/online-course/delete/{course}',[CourseOnlineController::class,'destroy']);
+});
+

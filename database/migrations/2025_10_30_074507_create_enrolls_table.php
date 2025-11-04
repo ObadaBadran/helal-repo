@@ -13,8 +13,11 @@ return new class extends Migration
     {
         Schema::create('enrolls', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('course_id')->constrained('courses')
-            ->cascadeOnDelete()->cascadeOnUpdate();
+           $table->foreignId('course_id')->nullable()->constrained('courses')
+      ->cascadeOnDelete()->cascadeOnUpdate();
+
+            $table->foreignId('course_online_id')->nullable()->constrained('course_online')
+      ->cascadeOnDelete()->cascadeOnUpdate();
             $table->foreignId('user_id')->constrained('users')
             ->cascadeOnDelete()->cascadeOnUpdate();
             $table->enum('payment_status', ['pending', 'paid', 'canceled'])->default('pending');

@@ -74,4 +74,11 @@ class User extends Authenticatable implements JWTSubject
     public function consultations() : HasMany {
         return $this->hasMany(Consultation::class, 'user_id');
     }
+
+    public function enrolledCourses()
+{
+    return $this->belongsToMany(\App\Models\CourseOnline::class, 'enrolls', 'user_id', 'course_online_id')
+                ->withPivot(['payment_status', 'is_enrolled'])
+                ->withTimestamps();
+}
 }

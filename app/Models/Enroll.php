@@ -10,6 +10,7 @@ class Enroll extends Model
     protected $fillable = [
         'user_id',
         'course_id',
+        'course_online_id',
         'payment_status',
         'payment_method',
         'amount',
@@ -26,4 +27,9 @@ class Enroll extends Model
     public function course() : BelongsTo {
         return $this->belongsTo(Course::class);
     }
+
+    public function courseOnline()
+{
+    return $this->belongsTo(CourseOnline::class, 'course_online_id');
+}
 }
