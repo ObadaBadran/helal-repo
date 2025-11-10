@@ -10,17 +10,16 @@ use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 
-use function PHPUnit\Framework\returnSelf;
-
 class VideoController extends Controller
 {
     use PaginationTrait;
 
-    public function index(Request $request, $course_id) {
+    public function index(Request $request, $course_id)
+    {
         $user = auth('api')->user();
-        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
+        if (!$user) return response()->json(['message' => 'Unauthorized'], 401);
 
-        try{
+        try {
             $lang = $request->query('lang', 'en');
 
             $videosQuery = Video::where('course_id', $course_id)
@@ -32,7 +31,7 @@ class VideoController extends Controller
                     $lang === 'ar' ? 'description_ar as description' : 'description_en as description',
                     'path',
                     'youtube_path',
-                    'cover',
+                    'cover'
                 );
 
             $videosPaginated = $this->paginateResponse(
@@ -52,6 +51,7 @@ class VideoController extends Controller
                     ];
                 }
             );
+
             return response()->json([
                 'status' => 'success',
                 'message' => "Videos retrieved successfully",
@@ -63,7 +63,7 @@ class VideoController extends Controller
                 'status' => 'error',
                 'message' => 'Course not found',
             ], 404);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to retrieve videos',
@@ -88,14 +88,20 @@ class VideoController extends Controller
                 'cover' => 'nullable|image|mimes:jpeg,png,jpg,gif',
             ]);
 
+            // تخزين الفيديو
             if ($request->hasFile('path')) {
-                $path = $request->file('path')->store('videos', 'public');
-                $validatedData['path'] = '/storage/' . $path;
+                $videoFile = $request->file('path');
+                $videoName = uniqid('video_') . '.' . $videoFile->getClientOriginalExtension();
+                $videoFile->move(public_path('storage/videos'), $videoName);
+                $validatedData['path'] = 'storage/videos/' . $videoName;
             }
 
+            // تخزين الغلاف
             if ($request->hasFile('cover')) {
-                $path = $request->file('cover')->store('covers', 'public');
-                $validatedData['cover'] = '/storage/' . $path;
+                $coverFile = $request->file('cover');
+                $coverName = uniqid('cover_') . '.' . $coverFile->getClientOriginalExtension();
+                $coverFile->move(public_path('storage/covers'), $coverName);
+                $validatedData['cover'] = 'storage/covers/' . $coverName;
             }
 
             $video = Video::create($validatedData);
@@ -114,54 +120,6 @@ class VideoController extends Controller
         }
     }
 
-    public function show(Request $request, $id)
-    {
-        $user = auth('api')->user();
-        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
-        
-        try {
-            $lang = $request->query('lang', 'en');
-
-            $video = Video::select(
-                'id',
-                'course_id',
-                $lang === 'ar' ? 'title_ar as title' : 'title_en as title',
-                $lang === 'ar' ? 'subTitle_ar as subTitle' : 'subTitle_en as subTitle',
-                $lang === 'ar' ? 'description_ar as description' : 'description_en as description',
-                'path',
-                'youtube_path',
-                'cover'
-            )->findOrFail($id);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Video retrieved successfully',
-                'video' => [
-                    'id' => $video->id,
-                    'course_id' => $video->course_id,
-                    'title' => $video->title,
-                    'subTitle' => $video->subTitle,
-                    'description' => $video->description,
-                    'path' => $video->path ? asset($video->path) : null,
-                    'youtube_path' => $video->youtube_path,
-                    'cover' => $video->cover ? asset($video->cover) : null,
-                ]
-            ], 200);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Video not found'
-            ], 404);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to retrieve video',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-
     public function update(Request $request, $id)
     {
         try {
@@ -177,23 +135,26 @@ class VideoController extends Controller
                 'description_en' => 'nullable|string',
                 'description_ar' => 'nullable|string',
                 'cover' => 'nullable|image|mimes:jpeg,png,jpg,gif',
-                
             ]);
 
             if ($request->hasFile('path')) {
                 if ($video->path && file_exists(public_path($video->path))) {
                     unlink(public_path($video->path));
                 }
-                $path = $request->file('path')->store('videos', 'public');
-                $validatedData['path'] = '/storage/' . $path;
+                $videoFile = $request->file('path');
+                $videoName = uniqid('video_') . '.' . $videoFile->getClientOriginalExtension();
+                $videoFile->move(public_path('storage/videos'), $videoName);
+                $validatedData['path'] = 'storage/videos/' . $videoName;
             }
 
             if ($request->hasFile('cover')) {
                 if ($video->cover && file_exists(public_path($video->cover))) {
                     unlink(public_path($video->cover));
                 }
-                $path = $request->file('cover')->store('covers', 'public');
-                $validatedData['cover'] = '/storage/' . $path;
+                $coverFile = $request->file('cover');
+                $coverName = uniqid('cover_') . '.' . $coverFile->getClientOriginalExtension();
+                $coverFile->move(public_path('storage/covers'), $coverName);
+                $validatedData['cover'] = 'storage/covers/' . $coverName;
             }
 
             $video->update($validatedData);

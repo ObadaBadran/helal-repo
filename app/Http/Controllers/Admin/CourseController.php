@@ -144,22 +144,11 @@ class CourseController extends Controller
                 'image' => $course->image ? asset($course->image) : null,
             ];
 
-            $videosQuery = Video::where('course_id', $course->id)
-                ->select('id', $lang === 'ar' ? 'title_ar as title' : 'title_en as title', 'path');
-
-            $videosPaginated = $this->paginateResponse($request, $videosQuery, 'Videos', function ($video) {
-                return [
-                    'id' => $video->id,
-                    'title' => $video->title,
-                    'video_url' => $video->path,
-                ];
-            });
-
+            
             return response()->json([
                 'status' => 'success',
                 'message' => 'Course retrieved successfully',
                 'course' => $courseData,
-                'videos' => $videosPaginated,
             ], 200);
 
         } catch (ModelNotFoundException $e) {
@@ -179,82 +168,97 @@ class CourseController extends Controller
 
 
    public function update(Request $request, $id)
-    {
-        try {
-            $course = Course::findOrFail($id);
+{
+    try {
+        $course = Course::findOrFail($id);
 
-            $validatedData = $request->validate([
-                'title_en' => 'nullable|string|max:255',
-                'title_ar' => 'nullable|string|max:255',
-                'subTitle_en' => 'nullable|string|max:255',
-                'subTitle_ar' => 'nullable|string|max:255',
-                'description_en' => 'nullable|string',
-                'description_ar' => 'nullable|string',
-                'price_aed' => 'nullable|numeric|min:0',
-                'price_usd' => 'nullable|numeric|min:0',
-                'reviews' => 'nullable|integer|min:0',
-                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            ]);
+        $validatedData = $request->validate([
+            'title_en' => 'nullable|string|max:255',
+            'title_ar' => 'nullable|string|max:255',
+            'subTitle_en' => 'nullable|string|max:255',
+            'subTitle_ar' => 'nullable|string|max:255',
+            'description_en' => 'nullable|string',
+            'description_ar' => 'nullable|string',
+            'price_aed' => 'nullable|numeric|min:0',
+            'price_usd' => 'nullable|numeric|min:0',
+            'reviews' => 'nullable|integer|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
 
-            if ($request->hasFile('image')) {
-                // حذف الصورة القديمة إن وجدت
-                if ($course->image && file_exists(public_path('storage/' . $course->image))) {
-                    unlink(public_path('storage/' . $course->image));
+        if ($request->hasFile('image')) {
+
+           
+            if ($course->image) {
+                $oldImagePath = public_path($course->image);
+                if (file_exists($oldImagePath)) {
+                    unlink($oldImagePath);
                 }
-
-                // رفع الصورة الجديدة
-                $path = $request->file('image')->store('course_images', 'public');
-                $validatedData['image'] = '/storage/' . $path ;
             }
 
-            $course->update($validatedData);
+            
+            $imageName = 'course_' . uniqid() . '.' . $request->file('image')->getClientOriginalExtension();
+            $request->file('image')->move(public_path('storage/course_images'), $imageName);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Course updated successfully',
-                'course' => $course
-            ], 200);
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Course not found'
-            ], 404);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to update course',
-                'error' => $e->getMessage()
-            ], 500);
+            $validatedData['image'] = 'storage/course_images/' . $imageName;
         }
+
+        $course->update($validatedData);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Course updated successfully',
+            'course' => $course
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Course not found'
+        ], 404);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to update course',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
 
 
-    public function destroy($id)
-    {
-        try {
-            $course = Course::findOrFail($id);
-            $course->delete();
+   public function destroy($id)
+{
+    try {
+        $course = Course::findOrFail($id);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Course deleted successfully'
-            ], 200);
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Course not found'
-            ], 404);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to delete course',
-                'error' => $e->getMessage()
-            ], 500);
+        // حذف الصورة من المجلد إن وجدت
+        if ($course->image) {
+            $imagePath = public_path($course->image);
+            if (file_exists($imagePath)) {
+                unlink($imagePath);
+            }
         }
+
+        $course->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Course deleted successfully'
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Course not found'
+        ], 404);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to delete course',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 }

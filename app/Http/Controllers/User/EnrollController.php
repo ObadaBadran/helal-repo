@@ -82,8 +82,8 @@ class EnrollController extends Controller
         'is_enroll' => false,
     ]);
 
-    Stripe::setApiKey(env('STRIPE_SECRET'));
-
+    Stripe::setApiKey(config('services.stripe.secret'));
+    
     $session = StripeSession::create([
         'payment_method_types' => ['card'],
         'line_items' => [[

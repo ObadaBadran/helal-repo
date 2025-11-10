@@ -7,11 +7,9 @@ use App\Models\NewsSectionImage;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
-use Illuminate\Support\Facades\Storage;
 
 class NewsSectionController extends Controller
 {
-
     public function index(Request $request)
     {
         try {
@@ -23,11 +21,7 @@ class NewsSectionController extends Controller
                 ->paginate($perPage, ['*'], 'page', $page);
 
             $data = $sections->map(function ($section) use ($lang) {
-                // تحويل كل مسار صورة إلى رابط كامل
-                $images = $section->images->map(function ($img) {
-                    return asset('storage/' . $img->image);
-                });
-
+                $images = $section->images->map(fn($img) => asset('storage/' . $img->image));
                 return [
                     'id' => $section->id,
                     'title' => $lang === 'ar' ? $section->title_ar : $section->title_en,
@@ -56,14 +50,11 @@ class NewsSectionController extends Controller
         }
     }
 
-
-    // ✅ عرض قسم واحد
     public function show(Request $request, $id)
     {
         try {
             $lang = $request->query('lang', 'en');
             $section = NewsSection::with('images')->findOrFail($id);
-
             $images = $section->images->map(fn($img) => asset('storage/' . $img->image));
 
             return response()->json([
@@ -80,8 +71,7 @@ class NewsSectionController extends Controller
         }
     }
 
-
-    // ✅ إنشاء قسم جديد مع صور
+    // ✅ إنشاء قسم جديد مع صور (تخزين في public/storage)
     public function store(Request $request)
     {
         try {
@@ -96,17 +86,19 @@ class NewsSectionController extends Controller
             ]);
 
             $newsSection = NewsSection::create($data);
-
             $imagePaths = [];
 
             if ($request->hasFile('image')) {
                 foreach ($request->file('image') as $image) {
-                    $path = $image->store('news_images', 'public');
-                    $newsImage = NewsSectionImage::create([
+                    $imageName = uniqid('news_') . '.' . $image->getClientOriginalExtension();
+                    $image->move(public_path('storage/news_images'), $imageName);
+
+                    NewsSectionImage::create([
                         'news_section_id' => $newsSection->id,
-                        'image' => $path, // هنا يجب أن يكون 'image' وليس 'image_path'
+                        'image' => 'news_images/' . $imageName,
                     ]);
-                    $imagePaths[] = asset('storage/' . $path);
+
+                    $imagePaths[] = asset('storage/news_images/' . $imageName);
                 }
             }
 
@@ -136,7 +128,7 @@ class NewsSectionController extends Controller
         }
     }
 
-
+    // ✅ تعديل قسم وصوره
     public function update(Request $request, $id)
     {
         try {
@@ -152,33 +144,31 @@ class NewsSectionController extends Controller
                 'image.*' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:5120',
             ]);
 
-            // تحديث البيانات النصية
             $newsSection->update($data);
 
-            // إذا تم إرسال صور جديدة
             if ($request->hasFile('image')) {
-                // حذف الصور القديمة من التخزين والسجل
+                // حذف الصور القديمة من public/storage
                 foreach ($newsSection->images as $oldImage) {
-                    if (Storage::disk('public')->exists($oldImage->image)) {
-                        Storage::disk('public')->delete($oldImage->image);
+                    $oldPath = public_path('storage/' . $oldImage->image);
+                    if (file_exists($oldPath)) {
+                        unlink($oldPath);
                     }
                     $oldImage->delete();
                 }
 
                 // رفع الصور الجديدة
                 foreach ($request->file('image') as $image) {
-                    $path = $image->store('news_images', 'public');
+                    $imageName = uniqid('news_') . '.' . $image->getClientOriginalExtension();
+                    $image->move(public_path('storage/news_images'), $imageName);
+
                     NewsSectionImage::create([
                         'news_section_id' => $newsSection->id,
-                        'image' => $path,
+                        'image' => 'news_images/' . $imageName,
                     ]);
                 }
             }
 
-            // إعادة تحميل العلاقة بعد التحديث أو رفع الصور
             $newsSection->load('images');
-
-            // إنشاء روابط الصور
             $imagePaths = $newsSection->images->map(fn($img) => asset('storage/' . $img->image))->toArray();
 
             return response()->json([
@@ -202,22 +192,20 @@ class NewsSectionController extends Controller
         }
     }
 
-
-    // ✅ حذف قسم
+    // ✅ حذف قسم وصوره من public/storage
     public function destroy($id)
     {
         try {
             $newsSection = NewsSection::with('images')->findOrFail($id);
 
-            // حذف الصور من التخزين
             foreach ($newsSection->images as $image) {
-                if ($image->image && Storage::disk('public')->exists($image->image)) {
-                    Storage::disk('public')->delete($image->image);
+                $path = public_path('storage/' . $image->image);
+                if (file_exists($path)) {
+                    unlink($path);
                 }
                 $image->delete();
             }
 
-            // حذف القسم نفسه
             $newsSection->delete();
 
             return response()->json([
@@ -229,10 +217,8 @@ class NewsSectionController extends Controller
         } catch (Exception $e) {
             return response()->json([
                 'error' => 'Something went wrong.',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
-
-
 }

@@ -193,8 +193,6 @@ class AdminContoller extends Controller
         }
     }
 
-    public function searchUser() {
-        
-    }
+    
 
 }
