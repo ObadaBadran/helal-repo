@@ -14,6 +14,9 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\User\EnrollController;
 use App\Http\Controllers\Admin\CourseOnlineController;
 use App\Http\Controllers\Admin\AvailabilityController;
+use App\Http\Controllers\ConsulationInformationController;
+
+
 
 use Illuminate\Support\Facades\Mail;
 
@@ -136,5 +139,15 @@ Route::middleware(['auth:api','admin'])->group(function () {
     Route::get('admin/availabilities',[AvailabilityController::class,'index']);
     Route::post('admin/availabilities',[AvailabilityController::class,'store']);
     Route::delete('admin/availabilities/{availability}',[AvailabilityController::class,'destroy']);
+});
+//consultation
+Route::get('/consultations/get', [ConsulationInformationController::class, 'index']);
+Route::get('/consultations/show/{id}', [ConsulationInformationController::class, 'show']);
+
+// Routes محمية للمسؤول فقط
+Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::post('admin/consultations/add', [ConsulationInformationController::class, 'store']);
+    Route::put('admin/consultations/update/{id}', [ConsulationInformationController::class, 'update']);
+    Route::delete('admin/consultations/delete/{id}', [ConsulationInformationController::class, 'destroy']);
 });
 
