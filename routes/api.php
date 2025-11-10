@@ -13,6 +13,7 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\User\EnrollController;
 use App\Http\Controllers\Admin\CourseOnlineController;
+use App\Http\Controllers\Admin\AvailabilityController;
 
 use Illuminate\Support\Facades\Mail;
 
@@ -23,13 +24,13 @@ use App\Models\User;
 Route::post('/create-meet', function(Request $request) {
     $summary = $request->summary ?? 'Meeting';
     $startTime = $request->start_time ?? now();
-    $duration = $request->duration ?? 60; 
+    $duration = $request->duration ?? 60;
 
-   
+
     $roomName = 'meeting_' . Str::random(10);
     $meetUrl = "https://meet.jit.si/$roomName";
 
-   
+
     $meeting = Meeting::create([
         'summary' => $summary,
         'start_time' => $startTime,
@@ -37,7 +38,7 @@ Route::post('/create-meet', function(Request $request) {
         'meet_url' => $meetUrl,
     ]);
 
-  
+
     $totalMeetings = Meeting::count();
     if ($totalMeetings > 10) {
         $toDelete = Meeting::orderBy('created_at', 'asc')
@@ -78,7 +79,7 @@ Route::post('/admin/send-meet-emails/{meeting}', function(Request $request, Meet
     }
 
     $roomId = basename($meeting->meet_url);
-    $joinUrl = "http://localhost:5173/Helal-Aljaberi/meet/{$roomId}"; 
+    $joinUrl = "http://localhost:5173/Helal-Aljaberi/meet/{$roomId}";
 
     foreach ($users as $user) {
 
@@ -211,5 +212,11 @@ Route::middleware(['auth:api','admin'])->group(function () {
     Route::post('admin/online-course/add-meet/{course}',[CourseOnlineController::class,'addMeetUrl']);
     Route::post('admin/online-course/update/{course}',[CourseOnlineController::class,'update']);
     Route::delete('admin/online-course/delete/{course}',[CourseOnlineController::class,'destroy']);
+});
+
+Route::middleware(['auth:api','admin'])->group(function () {
+    Route::get('admin/availabilities',[AvailabilityController::class,'index']);
+    Route::post('admin/availabilities',[AvailabilityController::class,'store']);
+    Route::delete('admin/availabilities/{availability}',[AvailabilityController::class,'destroy']);
 });
 
