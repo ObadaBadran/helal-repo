@@ -93,9 +93,10 @@ class CourseController extends Controller
             ]);
 
             if ($request->hasFile('image')) {
-                $path = $request->file('image')->store('course_images', 'public');
-                $validatedData['image'] = '/storage/' . $path;
-            }
+              $imageName = 'course_' . uniqid() . '.' . $request->file('image')->getClientOriginalExtension();
+              $request->file('image')->move(public_path('course_images'), $imageName);
+              $validatedData['image'] = 'course_images/' . $imageName;
+           }
 
             $course = Course::create($validatedData);
 
@@ -107,10 +108,24 @@ class CourseController extends Controller
             }
 
             return response()->json([
-                'status' => 'success',
-                'message' => 'Course created successfully',
-                'course' => $course
-            ], 201);
+    'status' => 'success',
+    'message' => 'Course created successfully',
+    'course' => [
+        'id' => $course->id,
+        'title_en' => $course->title_en,
+        'title_ar' => $course->title_ar,
+        'subTitle_en' => $course->subTitle_en,
+        'subTitle_ar' => $course->subTitle_ar,
+        'description_en' => $course->description_en,
+        'description_ar' => $course->description_ar,
+        'price_aed' => $course->price_aed,
+        'price_usd' => $course->price_usd,
+        'reviews' => $course->reviews,
+        'image' => $course->image ? asset($course->image) : null, 
+        'created_at' => $course->created_at,
+        'updated_at' => $course->updated_at,
+    ]
+], 201);
 
 
 
@@ -187,28 +202,42 @@ class CourseController extends Controller
 
         if ($request->hasFile('image')) {
 
-           
-            if ($course->image) {
-                $oldImagePath = public_path($course->image);
-                if (file_exists($oldImagePath)) {
-                    unlink($oldImagePath);
-                }
-            }
-
-            
-            $imageName = 'course_' . uniqid() . '.' . $request->file('image')->getClientOriginalExtension();
-            $request->file('image')->move(public_path('storage/course_images'), $imageName);
-
-            $validatedData['image'] = 'storage/course_images/' . $imageName;
+    // حذف الصورة القديمة إن وجدت
+    if ($course->image) {
+        $oldImagePath = public_path($course->image);
+        if (file_exists($oldImagePath)) {
+            unlink($oldImagePath);
         }
+    }
+
+    // حفظ الصورة الجديدة مباشرة في public/course_images
+    $imageName = 'course_' . uniqid() . '.' . $request->file('image')->getClientOriginalExtension();
+    $request->file('image')->move(public_path('course_images'), $imageName);
+
+    $validatedData['image'] = 'course_images/' . $imageName;
+    }
 
         $course->update($validatedData);
 
         return response()->json([
-            'status' => 'success',
-            'message' => 'Course updated successfully',
-            'course' => $course
-        ], 200);
+    'status' => 'success',
+    'message' => 'Course created successfully',
+    'course' => [
+        'id' => $course->id,
+        'title_en' => $course->title_en,
+        'title_ar' => $course->title_ar,
+        'subTitle_en' => $course->subTitle_en,
+        'subTitle_ar' => $course->subTitle_ar,
+        'description_en' => $course->description_en,
+        'description_ar' => $course->description_ar,
+        'price_aed' => $course->price_aed,
+        'price_usd' => $course->price_usd,
+        'reviews' => $course->reviews,
+        'image' => $course->image ? asset($course->image) : null, 
+        'created_at' => $course->created_at,
+        'updated_at' => $course->updated_at,
+    ]
+], 201);
 
     } catch (ModelNotFoundException $e) {
         return response()->json([

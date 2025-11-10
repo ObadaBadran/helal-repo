@@ -38,7 +38,7 @@ class VideoSeeder extends Seeder
                 'cover' => 'covers-seed/laravel_routing.png',
             ],
             [
-                'course_id' => 2,
+                'course_id' => 1,
                 'path' => 'videos-seed/laravel_intro',
                 'youtube_path' => 'https://www.youtube.com/watch?v=fbOUrAFzvpw',
                 'title_en' => 'React Components',
@@ -52,9 +52,16 @@ class VideoSeeder extends Seeder
         ];
 
         foreach ($videos as $video) {
-   $video['path'] = ('/storage/' . $video['path'] . '.mp4'); 
-    $video['cover'] = '/storage/' . $video['cover'];
-    Video::create($video);
-}
+            // استخدام asset للحصول على رابط كامل
+            if ($video['path']) {
+                $video['path'] = asset('storage/' . $video['path'] . '.mp4');
+            }
+
+            if ($video['cover']) {
+                $video['cover'] = asset('storage/' . $video['cover']);
+            }
+
+            Video::create($video);
+        }
     }
 }

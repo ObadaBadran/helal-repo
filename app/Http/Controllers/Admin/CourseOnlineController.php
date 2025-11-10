@@ -34,12 +34,12 @@ class CourseOnlineController extends Controller
 
             // تخزين الصورة في public/storage/course_covers
             if ($request->hasFile('cover_image')) {
-                $dir = public_path('storage/course_covers');
+                $dir = public_path('course_covers');
                 if (!file_exists($dir)) mkdir($dir, 0777, true);
 
                 $imageName = 'course_' . uniqid() . '.' . $request->file('cover_image')->getClientOriginalExtension();
                 $request->file('cover_image')->move($dir, $imageName);
-                $data['cover_image'] = 'storage/course_covers/' . $imageName;
+                $data['cover_image'] = 'course_covers/' . $imageName;
             }
 
             $course = CourseOnline::create($data);
@@ -155,12 +155,12 @@ class CourseOnlineController extends Controller
                     unlink(public_path($course->cover_image));
                 }
 
-                $dir = public_path('storage/course_covers');
+                $dir = public_path('course_covers');
                 if (!file_exists($dir)) mkdir($dir, 0777, true);
 
                 $imageName = 'course_' . uniqid() . '.' . $request->file('cover_image')->getClientOriginalExtension();
                 $request->file('cover_image')->move($dir, $imageName);
-                $data['cover_image'] = 'storage/course_covers/' . $imageName;
+                $data['cover_image'] = 'course_covers/' . $imageName;
             }
 
             $course->update($data);

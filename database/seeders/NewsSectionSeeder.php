@@ -58,10 +58,10 @@ class NewsSectionSeeder extends Seeder
                 'description_ar' => $sec['description_ar'],
             ]);
 
-            foreach ($sec['images'] as $img) {
+             foreach ($sec['images'] as $img) {
                 NewsSectionImage::create([
                     'news_section_id' => $section->id,
-                    'image' => '' . $img
+                    'image' => asset($img), 
                 ]);
             }
         }

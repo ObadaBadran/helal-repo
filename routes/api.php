@@ -143,6 +143,9 @@ Route::prefix('news-sections')->group(function () {
         Route::post('/', [NewsSectionController::class, 'store']);
         Route::post('/{id}', [NewsSectionController::class, 'update']);
         Route::delete('/{id}', [NewsSectionController::class, 'destroy']);
+        Route::delete('/{sectionId}/images', [NewsSectionController::class, 'deleteImages']);
+
+        
     });
 });
 //email**************************************************************************

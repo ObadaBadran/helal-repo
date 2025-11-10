@@ -40,8 +40,12 @@ class CourseSeeder extends Seeder
         ];
 
        foreach ($courses as $course) {
-    $course['image'] = '/storage/' . $course['image']; 
-    Course::create($course);
-}
+            if (!empty($course['image'])) {
+                
+                $course['image'] = asset($course['image']);
+            }
+
+            Course::create($course);
+        }
     }
 }
