@@ -13,6 +13,7 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\User\EnrollController;
 use App\Http\Controllers\Admin\CourseOnlineController;
+use App\Http\Controllers\Admin\AvailabilityController;
 
 use Illuminate\Support\Facades\Mail;
 
@@ -36,6 +37,7 @@ Route::middleware('auth:api')->group(function () {
 Route::post('/send-otp', [AuthController::class, 'sendOtp']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
 //videoCall*********************************************************************************
 Route::middleware('auth:api')->group(function () {
     Route::post('/call-user', [VideoChatController::class, 'callUser']);
@@ -128,5 +130,11 @@ Route::middleware(['auth:api','admin'])->group(function () {
     Route::post('admin/online-course/add-meet/{course}',[CourseOnlineController::class,'addMeetUrl']);
     Route::post('admin/online-course/update/{course}',[CourseOnlineController::class,'update']);
     Route::delete('admin/online-course/delete/{course}',[CourseOnlineController::class,'destroy']);
+});
+
+Route::middleware(['auth:api','admin'])->group(function () {
+    Route::get('admin/availabilities',[AvailabilityController::class,'index']);
+    Route::post('admin/availabilities',[AvailabilityController::class,'store']);
+    Route::delete('admin/availabilities/{availability}',[AvailabilityController::class,'destroy']);
 });
 
