@@ -282,34 +282,51 @@ class AuthController extends Controller
 
     // Update profile image
     public function updateProfileImage(Request $request)
-    {
-        $user = JWTAuth::user();
-        if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
+{
+    $user = JWTAuth::user();
+    if(!$user) return response()->json(['message' => 'Unauthorized'], 401);
 
-        $validator = Validator::make($request->all(), [
-            'profile_image' => 'required|image|mimes:jpeg,png,jpg,gif',
-        ], [
-            'profile_image.required' => 'Profile image is required.',
-            'profile_image.image' => 'File must be a valid image.',
-        ]);
+    $validator = Validator::make($request->all(), [
+        'profile_image' => 'required|image|mimes:jpeg,png,jpg,gif',
+    ], [
+        'profile_image.required' => 'Profile image is required.',
+        'profile_image.image' => 'File must be a valid image.',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
-        }
-
-        if ($user->profile_image && file_exists(public_path('storage/' . $user->profile_image))) {
-            unlink(public_path('storage/' . $user->profile_image));
-        }
-
-        $path = $request->file('profile_image')->store('profile_images', 'public');
-        $user->update(['profile_image' => '/storage/'. $path]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Profile image updated successfully.',
-            'profile_image_url' => $user->image ? asset($user->profile_image) : null
-        ]);
+    if ($validator->fails()) {
+        return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
     }
+
+    // حذف الصورة القديمة إذا موجودة
+    if ($user->profile_image) {
+        $oldPath = public_path($user->profile_image);
+        if (file_exists($oldPath)) {
+            unlink($oldPath);
+        }
+    }
+
+    // رفع الصورة الجديدة مباشرة داخل public/profile-images
+    $imageFile = $request->file('profile_image');
+    $imageName = uniqid('profile_') . '.' . $imageFile->getClientOriginalExtension();
+    $destinationPath = public_path('profile-images');
+
+    // إنشاء المجلد إذا لم يكن موجودًا
+    if (!file_exists($destinationPath)) {
+        mkdir($destinationPath, 0755, true);
+    }
+
+    $imageFile->move($destinationPath, $imageName);
+
+    // حفظ المسار في قاعدة البيانات
+    $user->update(['profile_image' => 'profile-images/' . $imageName]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Profile image updated successfully.',
+        'profile_image_url' => $user->profile_image ? asset($user->profile_image) : null
+    ]);
+}
+
 
     // Helper to return token with user info
     protected function respondWithToken($token, $user)

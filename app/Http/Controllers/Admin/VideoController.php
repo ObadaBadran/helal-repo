@@ -92,19 +92,27 @@ class VideoController extends Controller
             if ($request->hasFile('path')) {
                 $videoFile = $request->file('path');
                 $videoName = uniqid('video_') . '.' . $videoFile->getClientOriginalExtension();
-                $videoFile->move(public_path('storage/videos'), $videoName);
-                $validatedData['path'] = 'storage/videos/' . $videoName;
+                $videoFile->move(public_path('videos'), $videoName);
+                $validatedData['path'] = 'videos/' . $videoName;
             }
 
             // تخزين الغلاف
             if ($request->hasFile('cover')) {
                 $coverFile = $request->file('cover');
                 $coverName = uniqid('cover_') . '.' . $coverFile->getClientOriginalExtension();
-                $coverFile->move(public_path('storage/covers'), $coverName);
-                $validatedData['cover'] = 'storage/covers/' . $coverName;
+                $coverFile->move(public_path('covers'), $coverName);
+                $validatedData['cover'] = 'covers/' . $coverName;
             }
 
             $video = Video::create($validatedData);
+
+            if ($video->cover) {
+                $video->cover = asset($video->cover);
+            }
+
+            if ($video->path) {
+                $video->path = asset($video->path);
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -143,8 +151,8 @@ class VideoController extends Controller
                 }
                 $videoFile = $request->file('path');
                 $videoName = uniqid('video_') . '.' . $videoFile->getClientOriginalExtension();
-                $videoFile->move(public_path('storage/videos'), $videoName);
-                $validatedData['path'] = 'storage/videos/' . $videoName;
+                $videoFile->move(public_path('videos'), $videoName);
+                $validatedData['path'] = 'videos/' . $videoName;
             }
 
             if ($request->hasFile('cover')) {
@@ -153,11 +161,20 @@ class VideoController extends Controller
                 }
                 $coverFile = $request->file('cover');
                 $coverName = uniqid('cover_') . '.' . $coverFile->getClientOriginalExtension();
-                $coverFile->move(public_path('storage/covers'), $coverName);
-                $validatedData['cover'] = 'storage/covers/' . $coverName;
+                $coverFile->move(public_path('covers'), $coverName);
+                $validatedData['cover'] = 'covers/' . $coverName;
             }
 
             $video->update($validatedData);
+            
+            if ($video->cover) {
+                $video->cover = asset($video->cover);
+            }
+
+            if ($video->path) {
+                $video->path = asset($video->path);
+            }
+
 
             return response()->json([
                 'status' => 'success',
