@@ -4,15 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Consultation;
 use App\Models\ConsultationInformation;
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Exception;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class ConsultationController extends Controller
 {
-    // إنشاء consultation جديدة وجلسة دفع
+    // إنشاء consultation جديدة مع appointment وجلسة دفع
     public function createCheckoutSession(Request $request, $information_id)
     {
         try {
@@ -39,20 +41,30 @@ class ConsultationController extends Controller
                 'name' => 'required|string|max:255',
                 'email' => 'required|email',
                 'phone' => 'required|string|max:20',
-                'consultation_date' => 'required|date',
-                'consultation_time' => 'required|date_format:H:i',
+                'date' => 'required|date_format:d-m-Y',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i|after:start_time',
             ]);
 
-            // إنشاء consultation جديدة
+            // تحويل التاريخ إلى Y-m-d
+            $date = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
+
+            // إنشاء الموعد أولاً
+            $appointment = Appointment::create([
+                'date' => $date,
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'],
+            ]);
+
+            // إنشاء consultation جديدة وربطها بالموعد
             $consultation = Consultation::create([
                 'user_id' => $user->id,
                 'information_id' => $information_id,
+                'appointment_id' => $appointment->id,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
                 'payment_status' => 'pending',
-                'consultation_date' => $validated['consultation_date'],
-                'consultation_time' => $validated['consultation_time'],
                 'is_done' => false,
             ]);
 
@@ -80,6 +92,7 @@ class ConsultationController extends Controller
                     'consultation_id' => $consultation->id,
                     'user_id' => $user->id,
                     'information_id' => $information_id,
+                    'appointment_id' => $appointment->id,
                 ],
             ]);
 
@@ -90,6 +103,7 @@ class ConsultationController extends Controller
                 'message' => 'Consultation created and Stripe checkout session generated successfully',
                 'data' => [
                     'consultation' => $consultation,
+                    'appointment' => $appointment,
                     'redirect_url' => $session->url,
                     'session_id' => $session->id,
                 ]
