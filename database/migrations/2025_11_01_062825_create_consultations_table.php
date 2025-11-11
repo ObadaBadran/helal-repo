@@ -14,14 +14,13 @@ return new class extends Migration
         Schema::create('consultations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete()->cascadeOnUpdate();
+            $table->foreignId('information_id')->constrained('consulation_informations')->cascadeOnDelete()->cascadeOnUpdate();
             $table->string('name');
             $table->string('email');
             $table->string('phone');
-            $table->enum('currency', ['USD', 'AED'])->default('USD');
             $table->enum('payment_status', ['pending', 'paid', 'canceled'])->default('pending');
             $table->string('payment_method')->default('Stripe');
             $table->string('stripe_session_id')->nullable();
-            $table->decimal('amount', 10, 2);
             $table->string('meet_url')->nullable();
             $table->boolean('is_done')->default(false);
             $table->date('consultation_date')->nullable();

@@ -15,5 +15,10 @@ class ConsultationInformation extends Model
         'price',
         'currency',
         'duration',
+        
     ];
+
+    public function consultation(): HasOne {
+        return $this->hasOne(Consultation::class, 'information_id');
+    }
 }

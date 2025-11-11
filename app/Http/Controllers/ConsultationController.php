@@ -3,82 +3,111 @@
 namespace App\Http\Controllers;
 
 use App\Models\Consultation;
+use App\Models\ConsultationInformation;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
+use Exception;
+use Illuminate\Validation\ValidationException;
 
 class ConsultationController extends Controller
 {
-    const PRICE_USD = 100;
-    const PRICE_AED = 350;
+    // إنشاء consultation جديدة وجلسة دفع
+    public function createCheckoutSession(Request $request, $information_id)
+    {
+        try {
+            $user = auth('api')->user();
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized'
+                ], 401);
+            }
 
-    public function createCheckoutSession(Request $request) {
-        $user = auth('api')->user();
-        if (!$user) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
+            // البحث عن consultation information من الـ route
+            $consultationInfo = ConsultationInformation::find($information_id);
+            if (!$consultationInfo) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Consultation information not found.'
+                ], 404);
+            }
 
-        try{
-            $validatedData = $request->validate([
+            $validated = $request->validate([
+                'return_url' => 'required|url',
+                'cancel_url' => 'required|url',
                 'name' => 'required|string|max:255',
                 'email' => 'required|email',
                 'phone' => 'required|string|max:20',
-                'currency' => 'nullable|string',
-                'return_url' => 'required|url',
-                'cancel_url' => 'required|url',
+                'consultation_date' => 'required|date',
+                'consultation_time' => 'required|date_format:H:i',
             ]);
-        } catch(ValidationException $e) {
+
+            // إنشاء consultation جديدة
+            $consultation = Consultation::create([
+                'user_id' => $user->id,
+                'information_id' => $information_id,
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'payment_status' => 'pending',
+                'consultation_date' => $validated['consultation_date'],
+                'consultation_time' => $validated['consultation_time'],
+                'is_done' => false,
+            ]);
+
+            $currency = $consultationInfo->currency ?? 'USD';
+            $amount = $consultationInfo->price ?? ($currency === 'USD' ? 100 : 350);
+
+            Stripe::setApiKey(config('services.stripe.secret'));
+            $session = StripeSession::create([
+                'payment_method_types' => ['card'],
+                'line_items' => [[
+                    'price_data' => [
+                        'currency' => strtolower($currency),
+                        'unit_amount' => intval($amount * 100),
+                        'product_data' => [
+                            'name' => 'Private Consultation',
+                            'description' => $consultationInfo->type_en,
+                        ],
+                    ],
+                    'quantity' => 1,
+                ]],
+                'mode' => 'payment',
+                'success_url' => $validated['return_url'] . '?session_id={CHECKOUT_SESSION_ID}&consultation_id=' . $consultation->id,
+                'cancel_url' => $validated['cancel_url'] . '?consultation_id=' . $consultation->id,
+                'metadata' => [
+                    'consultation_id' => $consultation->id,
+                    'user_id' => $user->id,
+                    'information_id' => $information_id,
+                ],
+            ]);
+
+            $consultation->update(['stripe_session_id' => $session->id]);
+
             return response()->json([
-                'status' => 'error',
+                'status' => true,
+                'message' => 'Consultation created and Stripe checkout session generated successfully',
+                'data' => [
+                    'consultation' => $consultation,
+                    'redirect_url' => $session->url,
+                    'session_id' => $session->id,
+                ]
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
                 'errors' => $e->errors()
             ], 422);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to create consultation and Stripe checkout session',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $currency = $validatedData['currency'] ?? 'usd';
-        $amount = $currency === 'usd' ? self::PRICE_USD : self::PRICE_AED;
-
-        $consultation = Consultation::create([
-            'user_id' => $user->id,
-            'name' => $validatedData['name'],
-            'email' => $validatedData['email'],
-            'phone' => $validatedData['phone'],
-            'amount' => $amount,
-            'currency' => strtoupper($currency),
-            'payment_status' => 'pending',
-        ]);
-
-        Stripe::setApiKey(env('STRIPE_SECRET'));
-        $session = StripeSession::create([
-            'payment_method_types' => ['card'],
-            'line_items' => [[
-                'price_data' => [
-                    'currency' => strtolower($currency),
-                    'unit_amount' => intval($amount * 100),
-                    'product_data' => [
-                        'name' => 'Private Consultation',
-                        'description' => 'One-on-one consultation session',
-                    ],
-                ],
-                'quantity' => 1,
-            ]],
-            'mode' => 'payment',
-            'success_url' => $validatedData['return_url'] . '?order_id=' . $consultation->id,
-            'cancel_url' => $validatedData['cancel_url'],
-            'metadata' => [
-                'consultation_id' => $consultation->id,
-                'user_id' => $user->id,
-            ],
-        ]);
-
-        $consultation->update([
-            'stripe_session_id' => $session->id,
-        ]);
-
-        return response()->json([
-            'status' => 'redirect',
-            'redirect_url' => $session->url,
-            'session_id' => $session->id,
-        ]);
     }
 }

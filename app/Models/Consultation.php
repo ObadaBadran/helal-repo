@@ -7,22 +7,26 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Consultation extends Model
 {
-    protected $fillable = [
+     protected $fillable = [
         'user_id',
+        'information_id', 
         'name',
         'email',
         'phone',
         'payment_status',
         'payment_method',
         'stripe_session_id',
-        'amount',
-        'currency',
         'meet_url',
+        'is_done',
         'consultation_date',
-        'consultation_time',
+        'consultation_time'
     ];
 
     public function user() : BelongsTo {
         return $this->belongsTo(User::class);
+    }
+
+    public function information(): BelongsTo {
+        return $this->belongsTo(ConsultationInformation::class, 'information_id');
     }
 }

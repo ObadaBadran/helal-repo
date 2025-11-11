@@ -14,7 +14,7 @@ use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\User\EnrollController;
 use App\Http\Controllers\Admin\CourseOnlineController;
 use App\Http\Controllers\Admin\AvailabilityController;
-use App\Http\Controllers\ConsulationInformationController;
+use App\Http\Controllers\ConsultationInformationController;
 use App\Http\Controllers\User\AppointmentController;
 use Illuminate\Support\Facades\Mail;
 
@@ -96,7 +96,7 @@ Route::get('/videos/{id}', [VideoController::class, 'show']);
 
 //enroll course
 Route::post('/enroll', [EnrollController::class, 'enrollCourse']);
-Route::post('/consultation/checkout', [ConsultationController::class, 'createCheckoutSession']);
+Route::post('/consultations/create-checkout/{information_id}', [ConsultationController::class, 'createCheckoutSession']);
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
 Route::get('/stripe/cancel', [StripeWebhookController::class, 'cancel']);
 
@@ -143,13 +143,13 @@ Route::middleware(['auth:api'])->group(function () {
 });
 
 //consultation
-Route::get('/consultations/get', [ConsulationInformationController::class, 'index']);
-Route::get('/consultations/show/{id}', [ConsulationInformationController::class, 'show']);
+Route::get('/consultations/get', [ConsultationInformationController::class, 'index']);
+Route::get('/consultations/show/{id}', [ConsultationInformationController::class, 'show']);
 
 // Routes محمية للمسؤول فقط
 Route::middleware(['auth:api', 'admin'])->group(function () {
-    Route::post('admin/consultations/add', [ConsulationInformationController::class, 'store']);
-    Route::put('admin/consultations/update/{id}', [ConsulationInformationController::class, 'update']);
-    Route::delete('admin/consultations/delete/{id}', [ConsulationInformationController::class, 'destroy']);
+    Route::post('admin/consultations/add', [ConsultationInformationController::class, 'store']);
+    Route::put('admin/consultations/update/{id}', [ConsultationInformationController::class, 'update']);
+    Route::delete('admin/consultations/delete/{id}', [ConsultationInformationController::class, 'destroy']);
 });
 
