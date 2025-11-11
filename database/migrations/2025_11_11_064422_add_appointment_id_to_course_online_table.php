@@ -22,7 +22,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('course_online', function (Blueprint $table) {
-            //
+            $table->dropForeign(['appointment_id']);
+            $table->dropColumn('appointment_id');
         });
     }
 };
