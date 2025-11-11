@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\HandlesAppointmentTimesTrait;
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Enroll;
@@ -15,6 +16,8 @@ use Carbon\Carbon;
 
 class CourseOnlineController extends Controller
 {
+    use HandlesAppointmentTimesTrait;
+
     /**
      * إنشاء كورس أونلاين
      */
@@ -31,6 +34,13 @@ class CourseOnlineController extends Controller
                 'end_time' => 'required|date_format:H:i|after:start_time',
                 'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
             ]);
+
+            if (!$this->checkAppointmentConflict($request->date, $request->start_time, $request->end_time)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'There is another appointment at this time.'
+                ], 400);
+            }
 
             // تحويل التاريخ إلى Y-m-d
             $data['date'] = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
@@ -156,6 +166,17 @@ class CourseOnlineController extends Controller
 
             if (isset($data['date'])) {
                 $data['date'] = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
+
+                $appointment = $course->appointment;
+
+                if (!$this->checkAppointmentConflict($request->date,
+                    $request->start_time ?? $appointment->start_time,
+                    $request->end_time ?? $appointment->start_time, $appointment->id)) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'There is another appointment at this time.'
+                    ], 400);
+                }
 
                 $course->appointment->update($data);
             }
