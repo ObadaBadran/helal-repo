@@ -8,21 +8,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NewsSectionController;
-use App\Http\Controllers\AdminContoller;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\User\EnrollController;
 use App\Http\Controllers\Admin\CourseOnlineController;
 use App\Http\Controllers\Admin\AvailabilityController;
 use App\Http\Controllers\ConsulationInformationController;
-
-
-
+use App\Http\Controllers\User\AppointmentController;
 use Illuminate\Support\Facades\Mail;
-
-use Illuminate\Support\Str;
-use App\Models\Meeting;
-use App\Models\User;
 
 Route::post('/admin/create-meet', [AdminController::class, 'createMeet'])->middleware('admin');
 Route::post('/admin/send-meet-emails/{meeting}', [AdminController::class, 'sendMeetEmails'])->middleware('admin');
@@ -63,11 +57,11 @@ Route::prefix('news-sections')->group(function () {
         Route::delete('/{id}', [NewsSectionController::class, 'destroy']);
         Route::delete('/{sectionId}/images', [NewsSectionController::class, 'deleteImages']);
 
-        
+
     });
 });
 //email**************************************************************************
-Route::post('/contact/send', function(Request $request) {
+Route::post('/contact/send', function (Request $request) {
     $data = $request->validate([
         'full_name' => 'required|string|max:255',
         'email' => 'required|email',
@@ -83,7 +77,7 @@ Route::post('/contact/send', function(Request $request) {
     ]);
 });
 // Admin
-Route::middleware(['auth:api', 'admin'])->group(function() {
+Route::middleware(['auth:api', 'admin'])->group(function () {
     Route::post('/admin/courses/store', [CourseController::class, 'store']);
     Route::post('/admin/courses/update/{id}', [CourseController::class, 'update']);
     Route::delete('/admin/courses/delete/{id}', [CourseController::class, 'destroy']);
@@ -113,33 +107,41 @@ Route::middleware('auth:api')->get('/enrolled_courses', [EnrollController::class
 //Admin
 
 Route::middleware(['auth:api', 'admin'])->group(function () {
-    Route::get('admin/users',[AdminContoller::class, 'getUsers']);
-    Route::get('admin/users/by-name-email',[AdminContoller::class, 'getUsersByNameAndEmail']);
-    Route::get('admin/consultations', [AdminContoller::class, 'getConsultations']);
-    Route::post('admin/consultations/response', [AdminContoller::class, 'addConsultationResponse']);
-    Route::get('admin/meetings',[AdminContoller::class, 'getMeetings']);
+    Route::get('admin/users', [AdminController::class, 'getUsers']);
+    Route::get('admin/users/by-name-email', [AdminController::class, 'getUsersByNameAndEmail']);
+    Route::get('admin/consultations', [AdminController::class, 'getConsultations']);
+    Route::post('admin/consultations/response', [AdminController::class, 'addConsultationResponse']);
+    Route::get('admin/meetings', [AdminController::class, 'getMeetings']);
 
 });
 
-Route::get('/get/personal-information',[AuthController::class,'getUser']);
+Route::get('/get/personal-information', [AuthController::class, 'getUser']);
 //courses-online======================================================================
-Route::get('/courses-online/get',[CourseOnlineController::class,'index']);
-Route::get('/courses-online/show/{course}',[CourseOnlineController::class,'show']);
-Route::get('/courses-online/get-my-courses',[CourseOnlineController::class,'myCourses']);
+Route::get('/courses-online/get', [CourseOnlineController::class, 'index']);
+Route::get('/courses-online/show/{course}', [CourseOnlineController::class, 'show']);
+Route::get('/courses-online/get-my-courses', [CourseOnlineController::class, 'myCourses']);
 
 
-Route::middleware(['auth:api','admin'])->group(function () {
-    Route::post('admin/online-course/add',[CourseOnlineController::class,'store']);
-    Route::post('admin/online-course/add-meet/{course}',[CourseOnlineController::class,'addMeetUrl']);
-    Route::post('admin/online-course/update/{course}',[CourseOnlineController::class,'update']);
-    Route::delete('admin/online-course/delete/{course}',[CourseOnlineController::class,'destroy']);
+Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::post('admin/online-course/add', [CourseOnlineController::class, 'store']);
+    Route::post('admin/online-course/add-meet/{course}', [CourseOnlineController::class, 'addMeetUrl']);
+    Route::post('admin/online-course/update/{course}', [CourseOnlineController::class, 'update']);
+    Route::delete('admin/online-course/delete/{course}', [CourseOnlineController::class, 'destroy']);
 });
 
-Route::middleware(['auth:api','admin'])->group(function () {
-    Route::get('admin/availabilities',[AvailabilityController::class,'index']);
-    Route::post('admin/availabilities',[AvailabilityController::class,'store']);
-    Route::delete('admin/availabilities/{availability}',[AvailabilityController::class,'destroy']);
+Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::post('admin/availabilities', [AvailabilityController::class, 'store']);
+    Route::delete('admin/availabilities/{availability}', [AvailabilityController::class, 'destroy']);
 });
+
+Route::middleware(['auth:api'])->group(function () {
+    Route::get('availabilities', [AvailabilityController::class, 'index']);
+});
+
+Route::middleware(['auth:api'])->group(function () {
+    Route::get('appointments', [AppointmentController::class, 'index']);
+});
+
 //consultation
 Route::get('/consultations/get', [ConsulationInformationController::class, 'index']);
 Route::get('/consultations/show/{id}', [ConsulationInformationController::class, 'show']);
