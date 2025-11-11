@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\Enroll;
 use Illuminate\Http\Request;
 use App\Models\CourseOnline;
@@ -23,9 +24,11 @@ class CourseOnlineController extends Controller
             $data = $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'required|string',
-                'duration' => 'required|integer',
+                // 'duration' => 'required|integer',
                 'price' => 'required|numeric',
                 'date' => 'required|date_format:d-m-Y',
+                'start_time' => 'required|date_format:H:i',
+                'end_time' => 'required|date_format:H:i|after:start_time',
                 'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
             ]);
 
@@ -42,7 +45,9 @@ class CourseOnlineController extends Controller
                 $data['cover_image'] = 'course_covers/' . $imageName;
             }
 
-            $course = CourseOnline::create($data);
+            $appointment = Appointment::create($data);
+
+            $course = $appointment->courseOnline()->create($data);
 
             // تحويل الرابط ليكون كامل
             if ($course->cover_image) {
@@ -98,8 +103,10 @@ class CourseOnlineController extends Controller
                 Mail::raw(
                     "Hello {$user->name},\n\nYour online course is ready.\n" .
                     "Course: {$course->name}\n" .
-                    "Date: {$course->date}\n" .
-                    "Duration: {$course->duration} minutes\n" .
+                    "Date: {$course->appointment->date}\n" .
+                    "Start time: {$course->appointment->start_time}\n" .
+                    "End time: {$course->appointment->end_time}\n" .
+                    // "Duration: {$course->duration} minutes\n" .
                     "Price: {$course->price}\n" .
                     "Join via: {$joinUrl}\n",
                     function ($message) use ($user, $course) {
@@ -139,14 +146,18 @@ class CourseOnlineController extends Controller
             $data = $request->validate([
                 'name' => 'sometimes|required|string|max:255',
                 'description' => 'sometimes|required|string',
-                'duration' => 'sometimes|required|integer',
+                // 'duration' => 'sometimes|required|integer',
                 'price' => 'sometimes|required|numeric',
-                'date' => 'sometimes|required|date_format:d-m-Y',
+                'date' => 'sometimes|date_format:d-m-Y',
+                'start_time' => 'required_with:end_time|date_format:H:i',
+                'end_time' => 'required_with:start_time|date_format:H:i|after:start_time',
                 'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
             ]);
 
             if (isset($data['date'])) {
                 $data['date'] = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
+
+                $course->appointment->update($data);
             }
 
             if ($request->hasFile('cover_image')) {
@@ -206,11 +217,12 @@ class CourseOnlineController extends Controller
                     'id' => $course->id,
                     'name' => $course->name,
                     'description' => $course->description,
-                    'duration' => $course->duration,
+                    // 'duration' => $course->duration,
                     'price' => $course->price,
-                    'date' => $course->date,
+                    // 'date' => $course->date,
                     'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
                     'meet_url' => $course->meet_url,
+                    'appointment' => $course->appointment,
                 ];
             });
 
@@ -260,11 +272,12 @@ class CourseOnlineController extends Controller
                 'course_id' => $course->id,
                 'name' => $course->name,
                 'description' => $course->description,
-                'duration' => $course->duration,
+                // 'duration' => $course->duration,
                 'price' => $course->price,
-                'date' => $course->date,
+                // 'date' => $course->date,
                 'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
                 'meet_url' => $course->meet_url,
+                'appointment' => $course->appointment,
             ];
         })->filter();
 
@@ -304,11 +317,12 @@ class CourseOnlineController extends Controller
                     'id' => $course->id,
                     'name' => $course->name,
                     'description' => $course->description,
-                    'duration' => $course->duration,
+                    // 'duration' => $course->duration,
                     'price' => $course->price,
-                    'date' => $course->date,
+                    // 'date' => $course->date,
                     'cover_image' => $course->cover_image,
                     'meet_url' => $meetUrl,
+                    'appointment' => $course->appointment,
                 ]
             ]);
         } catch (Exception $e) {
@@ -329,6 +343,8 @@ class CourseOnlineController extends Controller
             if ($course->cover_image && file_exists(public_path($course->cover_image))) {
                 unlink(public_path($course->cover_image));
             }
+
+            $course->appointment->delete();
 
             $course->delete();
 

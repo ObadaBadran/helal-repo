@@ -4,25 +4,32 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CourseOnline extends Model
 {
     use HasFactory;
-      protected $table = 'course_online';
+
+    protected $table = 'course_online';
 
     protected $fillable = [
-        'name', 'description', 'duration', 'price', 'date', 'cover_image', 'meet_url'
+        'name', 'description', 'price', 'cover_image', 'meet_url', 'appointment_id'
     ];
 
     public function enrolls()
-{
-    return $this->hasMany(\App\Models\Enroll::class, 'course_online_id');
-}
+    {
+        return $this->hasMany(Enroll::class, 'course_online_id');
+    }
 
-public function enrolledUsers()
-{
-    return $this->belongsToMany(\App\Models\User::class, 'enrolls', 'course_online_id', 'user_id')
-                ->withPivot(['payment_status', 'is_enrolled'])
-                ->withTimestamps();
-}
+    public function enrolledUsers()
+    {
+        return $this->belongsToMany(User::class, 'enrolls', 'course_online_id', 'user_id')
+            ->withPivot(['payment_status', 'is_enrolled'])
+            ->withTimestamps();
+    }
+
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class);
+    }
 }

@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('course_online', function (Blueprint $table) {
             $table->id();
-             $table->string('name');                     
-            $table->text('description');              
-            $table->integer('duration');               
-            $table->decimal('price', 10, 2);          
-            $table->dateTime('date');                  
-            $table->string('cover_image')->nullable(); 
-            $table->string('meet_url')->nullable(); 
+             $table->string('name');
+            $table->text('description');
+            // $table->integer('duration');
+            $table->decimal('price', 10, 2);
+            // $table->dateTime('date');
+            $table->string('cover_image')->nullable();
+            $table->string('meet_url')->nullable();
             $table->timestamps();
         });
     }
