@@ -35,7 +35,7 @@ class AvailabilityController extends Controller
                 'availabilities' => 'required|array',
                 'availabilities.*.day' => 'required|string|in:Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
                 'availabilities.*.start_time' => 'required|date_format:H:i',
-                'availabilities.*.end_time' => 'required|date_format:H:i|after:start_time',
+                'availabilities.*.end_time' => 'required|date_format:H:i|after:availabilities.*.start_time',
             ]);
 
             foreach ($request->availabilities as $availability) {
