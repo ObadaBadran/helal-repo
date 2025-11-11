@@ -15,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Str;
 
 
-class AdminContoller extends Controller
+class AdminController extends Controller
 {
     use PaginationTrait;
 
