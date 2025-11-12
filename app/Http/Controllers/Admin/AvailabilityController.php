@@ -7,6 +7,7 @@ use App\Models\Availability;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class AvailabilityController extends Controller
 {
@@ -53,6 +54,12 @@ class AvailabilityController extends Controller
                 'message' => "Availabilities created successfully",
             ], 200);
 
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'error' => $e->getMessage()
+            ], 422);
         } catch (Exception $e) {
             return response()->json([
                 'status' => 'error',
