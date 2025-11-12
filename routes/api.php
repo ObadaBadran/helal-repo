@@ -71,7 +71,7 @@ Route::post('/contact/send', function (Request $request) {
     ]);
 
     // إرسال البريد إلى المدير
-    Mail::to('haidarahmad421@gmail.com')->send(new ContactMail($data));
+    Mail::to(config('services.admin.address'))->send(new ContactMail($data));
 
     return response()->json([
         'message' => 'Your message has been sent successfully!'
