@@ -205,74 +205,75 @@ class AdminController extends Controller
         }
     }
 
-    public function getUsersByNameAndEmail(Request $request)
-    {
-        try {
-            $page = (int)$request->input('page', 1);
-            $perPage = (int)$request->input('per_page', 10);
-            $search = trim($request->input('search', ''));
-            $courseId = $request->input('course_id');
+   public function getUsersByNameAndEmail(Request $request)
+{
+    try {
+        // أخذ المدخلات من query parameters بدلاً من request body
+        $page = (int)$request->query('page', 1);
+        $perPage = (int)$request->query('per_page', 10);
+        $search = trim($request->query('search', ''));
+        $courseId = $request->query('course_id');
 
-            // الاستعلام الأساسي (بدون تقييد الدور لتسهيل التجربة)
-            $usersQuery = User::query();
+        // الاستعلام الأساسي (بدون تقييد الدور لتسهيل التجربة)
+        $usersQuery = User::query();
 
-            // إذا تم إدخال نص بحث
-            if (!empty($search)) {
-                $usersQuery->where(function ($query) use ($search) {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
-                });
-            }
-
-            // تصفية حسب course_id إن وجد
-            if ($courseId) {
-                $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
-                    $query->where('course_id', $courseId);
-                });
-            }
-
-            // تنفيذ الاستعلام مع الترتيب والصفحات
-            $users = $usersQuery->orderBy('id', 'asc')
-                ->paginate($perPage, ['*'], 'page', $page);
-
-            // تحويل البيانات بشكل منسق
-            $data = $users->map(function ($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'phone_number' => $user->phone_number,
-                    'role' => $user->role,
-                    'profile_image' => $user->profile_image ? asset($user->profile_image) : null,
-                    'created_at' => $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : null,
-                ];
+        // إذا تم إدخال نص بحث
+        if (!empty($search)) {
+            $usersQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
+        }
 
-            if ($data->isEmpty()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'No users found.',
-                ], 404);
-            }
+        // تصفية حسب course_id إن وجد
+        if ($courseId) {
+            $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
+                $query->where('course_id', $courseId);
+            });
+        }
 
-            return response()->json([
-                'status' => true,
-                'data' => $data,
-                'pagination' => [
-                    'current_page' => $users->currentPage(),
-                    'last_page' => $users->lastPage(),
-                    'per_page' => $users->perPage(),
-                    'total' => $users->total(),
-                ]
-            ]);
-        } catch (Exception $e) {
+        // تنفيذ الاستعلام مع الترتيب والصفحات
+        $users = $usersQuery->orderBy('id', 'asc')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        // تحويل البيانات بشكل منسق
+        $data = $users->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+                'profile_image' => $user->profile_image ? asset($user->profile_image) : null,
+                'created_at' => $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : null,
+            ];
+        });
+
+        if ($data->isEmpty()) {
             return response()->json([
                 'status' => false,
-                'error' => 'Something went wrong.',
-                'message' => $e->getMessage(),
-            ], 500);
+                'message' => 'No users found.',
+            ], 404);
         }
+
+        return response()->json([
+            'status' => true,
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+            ]
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'error' => 'Something went wrong.',
+            'message' => $e->getMessage(),
+        ], 500);
     }
+}
 
     public function createMeet(Request $request)
     {
@@ -332,89 +333,128 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * إرسال روابط الاجتماعات إلى المستخدمين
-     */
-    public function sendMeetEmails(Request $request, Meeting $meeting)
-    {
-        try {
-            // ✅ التحقق من وجود الاجتماع
-            if (!$meeting) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Meeting not found'
-                ], 404);
-            }
-
-            // ✅ التحقق من البيانات
-            $validated = $request->validate([
-                'user_ids' => 'nullable|array',
-                'user_ids.*' => 'integer|exists:users,id',
-            ]);
-
-            $userIds = $validated['user_ids'] ?? null;
-
-            // ✅ تحديد المستخدمين
-            if ($userIds && is_array($userIds)) {
-                $users = User::where('role', 'user')
-                    ->whereIn('id', $userIds)
-                    ->get();
-            } else {
-                $users = User::where('role', 'user')->get();
-            }
-
-            if ($users->isEmpty()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'No users found to send email.'
-                ], 404);
-            }
-
-            // ✅ إعداد الرابط الكامل
-            $roomId = basename($meeting->meet_url);
-            $joinUrl = "http://localhost:5173/Helal-Aljaberi/meet/{$roomId}";
-
-            // ✅ إرسال البريد الإلكتروني
-            foreach ($users as $user) {
-                Mail::raw(
-                    "Hello {$user->name},\n\nA new meeting has been scheduled.\n" .
-                    "Topic: {$meeting->summary}\n" .
-                    "Start time: {$meeting->start_time}\n" .
-                    "Duration: {$meeting->duration} minutes\n" .
-                    "Join via: {$joinUrl}\n\n" .
-                    "Regards,\n" .
-                    "-----------------------------\n\n" .
-                    "مرحباً {$user->name},\n\nتم تحديد اجتماع جديد.\n" .
-                    "الموضوع: {$meeting->summary}\n" .
-                    "وقت البدء: {$meeting->start_time}\n" .
-                    "المدة: {$meeting->duration} دقيقة\n" .
-                    "رابط الانضمام: {$joinUrl}\n\n" .
-                    "مع تحياتنا",
-                    function ($message) use ($user, $meeting) {
-                        $message->to($user->email)
-                            ->subject("New Meeting / اجتماع جديد: {$meeting->summary}");
-                    }
-                );
-            }
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Emails sent successfully',
-                'sent_to_count' => $users->count()
-            ]);
-        } catch (ValidationException $e) {
+  /**
+ * إرسال روابط الاجتماعات إلى المستخدمين
+ */
+public function sendMeetEmails(Request $request, Meeting $meeting)
+{
+    try {
+        // ✅ تحقق من وجود الاجتماع
+        if (!$meeting) {
             return response()->json([
                 'status' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'An error occurred while sending emails',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Meeting not found'
+            ], 404);
         }
+
+        // ✅ الحصول على المستخدم الحالي (الأدمن)
+        $adminUser = auth('api')->user();
+        if (!$adminUser) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        // ✅ تحقق من البيانات المرسلة
+        $validated = $request->validate([
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'integer|exists:users,id',
+        ]);
+
+        $userIds = $validated['user_ids'];
+        $users = User::whereIn('id', $userIds)->get();
+
+        if ($users->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No users found to send email.'
+            ], 404);
+        }
+
+        // ✅ الروابط
+        $studentBaseUrl = 'http://localhost:5173/Helal-Aljaberi/meet/';
+        $adminBaseUrl = 'http://localhost:5173/dashboard/live-video/';
+        $roomId = str_replace('https://meet.jit.si/', '', $meeting->meet_url);
+
+        $studentJoinUrl = $studentBaseUrl . $roomId;
+        $adminJoinUrl = $adminBaseUrl . $roomId;
+
+        // ✅ إرسال البريد لكل مستخدم عادي (رابط المستخدم فقط)
+        foreach ($users as $user) {
+            Mail::raw(
+                "Hello {$user->name},\n\n" .
+                "A new meeting has been scheduled.\n" .
+                "Topic: {$meeting->summary}\n" .
+                "Start time: {$meeting->start_time}\n" .
+                "Duration: {$meeting->duration} minutes\n" .
+                "Join via: {$studentJoinUrl}\n\n" .
+                "Regards,\n\n" .
+                "-----------------------------\n\n" .
+                "مرحباً {$user->name},\n" .
+                "تم تحديد اجتماع جديد.\n" .
+                "الموضوع: {$meeting->summary}\n" .
+                "وقت البدء: {$meeting->start_time}\n" .
+                "المدة: {$meeting->duration} دقيقة\n" .
+                "رابط الانضمام: {$studentJoinUrl}\n\n" .
+                "تحياتنا.",
+                function ($message) use ($user, $meeting) {
+                    $message->to($user->email)
+                        ->subject("Meeting Invitation: {$meeting->summary}");
+                }
+            );
+        }
+
+        // ✅ إرسال البريد للأدمن (رابط الأدمن فقط)
+        Mail::raw(
+            "Hello {$adminUser->name},\n\n" .
+            "You have created a new meeting.\n" .
+            "Topic: {$meeting->summary}\n" .
+            "Start time: {$meeting->start_time}\n" .
+            "Duration: {$meeting->duration} minutes\n" .
+            "Admin Join Link: {$adminJoinUrl}\n\n" .
+            "Invited Users:\n" .
+            $users->pluck('name')->implode("\n") . "\n\n" .
+            "Regards,\n\n" .
+            "-----------------------------\n\n" .
+            "مرحباً {$adminUser->name},\n\n" .
+            "لقد قمت بإنشاء اجتماع جديد.\n" .
+            "الموضوع: {$meeting->summary}\n" .
+            "وقت البدء: {$meeting->start_time}\n" .
+            "المدة: {$meeting->duration} دقيقة\n" .
+            "رابط الانضمام للأدمن: {$adminJoinUrl}\n\n" .
+            "المستخدمين المدعوين:\n" .
+            $users->pluck('name')->implode("\n") . "\n\n" .
+            "تحياتنا.",
+            function ($message) use ($adminUser, $meeting) {
+                $message->to($adminUser->email)
+                    ->subject("Meeting Created: {$meeting->summary}");
+            }
+        );
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Emails sent successfully',
+            'sent_to_users' => $users->count(),
+            'sent_to_admin' => 1,
+            'student_join_url' => $studentJoinUrl,
+            'admin_join_url' => $adminJoinUrl,
+            'invited_users' => $users->pluck('name')
+        ]);
+    } catch (ValidationException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Validation failed',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'An error occurred while sending emails',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
+
 
 }

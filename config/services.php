@@ -45,4 +45,10 @@ return [
         ],
     ],
 
+
+    'frontend' => [
+    'student_meet_url' => env('STUDENT_FRONTEND_BASE_URL', 'http://localhost:5173/Helal-Aljaberi/meet/'),
+    'admin_meet_url' => env('ADMIN_FRONTEND_BASE_URL', 'http://localhost:5173/dashboard/live-video/'),
+],
+
 ];
