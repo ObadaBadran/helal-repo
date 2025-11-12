@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
              $table->string('name');
             $table->text('description');
+            $table->string('name_ar');
+            $table->text('description_ar');
             // $table->integer('duration');
             $table->decimal('price', 10, 2);
             // $table->dateTime('date');
