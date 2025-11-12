@@ -18,11 +18,15 @@ return [
         'token' => env('POSTMARK_TOKEN'),
     ],
 
+    'admin' => [
+        'address' => env('MAIL_ADMIN_EMAIL'),
+    ],
+
     'stripe' => [
-    'public' => env('STRIPE_PUBLIC'),
-    'secret' => env('STRIPE_SECRET'),
-    'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
-],
+        'public' => env('STRIPE_PUBLIC'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ],
 
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),

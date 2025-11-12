@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\HandlesAppointmentTimesTrait;
 use App\Models\Consultation;
 use App\Models\ConsultationInformation;
 use App\Models\Appointment;
@@ -14,6 +15,8 @@ use Carbon\Carbon;
 
 class ConsultationController extends Controller
 {
+    use HandlesAppointmentTimesTrait;
+
     // إنشاء consultation جديدة مع appointment وجلسة دفع
     public function createCheckoutSession(Request $request, $information_id)
     {
@@ -43,8 +46,24 @@ class ConsultationController extends Controller
                 'phone' => 'required|string|max:20',
                 'date' => 'required|date_format:d-m-Y',
                 'start_time' => 'required|date_format:H:i',
-                'end_time' => 'required|date_format:H:i|after:start_time',
+                //'end_time' => 'required|date_format:H:i|after:start_time',
             ]);
+
+            $validated['end_time'] = Carbon::createFromFormat('H:i', $validated['start_time'])->addMinutes($consultationInfo->duration)->format('H:i');
+
+            if (!$this->checkAvailabilityForDay($request->date, $validated['start_time'], $validated['end_time'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The appointment is outside the availability range.'
+                ], 400);
+            }
+
+            if (!$this->checkAppointmentConflict($request->date, $validated['start_time'], $validated['end_time'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'There is another appointment at this time.'
+                ], 400);
+            }
 
             // تحويل التاريخ إلى Y-m-d
             $date = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
@@ -113,7 +132,7 @@ class ConsultationController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->getMessage()
             ], 422);
 
         } catch (Exception $e) {

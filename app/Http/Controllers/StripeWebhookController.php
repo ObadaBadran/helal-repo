@@ -21,7 +21,7 @@ class StripeWebhookController extends Controller
     {
         $payload = $request->getContent();
         $sig_header = $request->header('Stripe-Signature');
-        $endpoint_secret = config('STRIPE_WEBHOOK_SECRET');
+        $endpoint_secret = config('services.stripe.webhook_secret');
 
         try {
             $event = Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
@@ -83,7 +83,7 @@ class StripeWebhookController extends Controller
                         'stripe_session_id' => $session->id,
                     ]);
 
-                    $adminEmail = env('MAIL_ADMIN_EMAIL');
+                    $adminEmail = config('services.admin.address');
 
                     Mail::send('emails.consultation', [
                         'consultation' => $consultation,

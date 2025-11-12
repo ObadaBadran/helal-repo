@@ -27,24 +27,24 @@ class AdminController extends Controller
             $lang = $request->query('lang', 'en');
 
 
-            $page = (int) $request->query('page', 1);
-            $perPage = (int) $request->query('per_page', (int) $request->query('sizer', 10));
+            $page = (int)$request->query('page', 1);
+            $perPage = (int)$request->query('per_page', (int)$request->query('sizer', 10));
 
 
             $usersQuery = User::where('role', 'user')->orderBy('id', 'asc');
             $users = $usersQuery->paginate($perPage, ['*'], 'page', $page);
 
-            if($request->has('course_id')) {
+            if ($request->has('course_id')) {
                 $courseId = $request->query('course_id');
                 $course = Course::find($courseId);
-                if(!$course) return response()->json(['message' => 'Course not found'], 404);
+                if (!$course) return response()->json(['message' => 'Course not found'], 404);
                 $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
                     $query->where('course_id', $courseId);
                 });
-            } else if($request->has('course_online_id')) {
+            } else if ($request->has('course_online_id')) {
                 $courseId = $request->query('course_online_id');
                 $course = CourseOnline::find($courseId);
-                if(!$course) return response()->json(['message' => 'Course not found'], 404);
+                if (!$course) return response()->json(['message' => 'Course not found'], 404);
                 $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
                     $query->where('course_online_id', $courseId);
                 });
@@ -98,15 +98,16 @@ class AdminController extends Controller
         ], 200);
     }
 
-    public function addConsultationResponse(Request $request) {
+    public function addConsultationResponse(Request $request)
+    {
 
         try {
-        $validatedData = $request->validate([
-            'consultation_id' => 'required|integer|exists:consultations,id',
-            'meet_url' => 'required|url',
-            'date' => 'required|date_format:Y-m-d',
-            'time' => 'required|date_format:H:i',
-        ]);
+            $validatedData = $request->validate([
+                'consultation_id' => 'required|integer|exists:consultations,id',
+                'meet_url' => 'required|url',
+                'date' => 'required|date_format:Y-m-d',
+                'time' => 'required|date_format:H:i',
+            ]);
         } catch (ValidationException $e) {
             return response()->json([
                 'status' => 'error',
@@ -138,11 +139,11 @@ class AdminController extends Controller
                 'locale' => $locale,
             ], function ($message) use ($consultation, $isArabic) {
                 $message->to($consultation->email)
-                        ->subject($isArabic
-                            ? 'تفاصيل استشارتك الخاصة'
-                            : 'Your Private Consultation Details');
+                    ->subject($isArabic
+                        ? 'تفاصيل استشارتك الخاصة'
+                        : 'Your Private Consultation Details');
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Failed to send consultation email', [
                 'consultation_id' => $consultation->id,
                 'user_email' => $consultation->email,
@@ -158,10 +159,11 @@ class AdminController extends Controller
         ]);
     }
 
-    public function getConsultations(Request $request) {
+    public function getConsultations(Request $request)
+    {
         try {
-            $page = (int) $request->query('page', 1);
-            $perPage = (int) $request->query('per_page', (int) $request->query('size', 10));
+            $page = (int)$request->query('page', 1);
+            $perPage = (int)$request->query('per_page', (int)$request->query('size', 10));
 
             $consultationsQuery = Consultation::where('payment_status', 'paid')->orderBy('id', 'asc');
 
@@ -175,8 +177,8 @@ class AdminController extends Controller
                     'phone' => $consultation->phone ?? null,
                     'meet_url' => $consultation->meet_url ?? null,
                     'is_done' => $consultation->is_done,
-                    'consultation_date' => $consultation->consultation_date ?? null,
-                    'consultation_time' => $consultation->consultation_time ?? null,
+                    'information' => $consultation->information,
+                    'appointment' => $consultation->appointment,
                     'created_at' => $consultation->created_at->toDateTimeString(),
                 ];
             });
@@ -195,7 +197,7 @@ class AdminController extends Controller
                     'total' => $consultations->total(),
                 ]
             ]);
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'error' => 'Something went wrong.',
                 'message' => $e->getMessage()
@@ -203,76 +205,76 @@ class AdminController extends Controller
         }
     }
 
-  public function getUsersByNameAndEmail(Request $request)
-{
-    try {
-        $page = (int) $request->input('page', 1);
-        $perPage = (int) $request->input('per_page', 10);
-        $search = trim($request->input('search', ''));
-        $courseId = $request->input('course_id');
+    public function getUsersByNameAndEmail(Request $request)
+    {
+        try {
+            $page = (int)$request->input('page', 1);
+            $perPage = (int)$request->input('per_page', 10);
+            $search = trim($request->input('search', ''));
+            $courseId = $request->input('course_id');
 
-        // الاستعلام الأساسي (بدون تقييد الدور لتسهيل التجربة)
-        $usersQuery = User::query();
+            // الاستعلام الأساسي (بدون تقييد الدور لتسهيل التجربة)
+            $usersQuery = User::query();
 
-        // إذا تم إدخال نص بحث
-        if (!empty($search)) {
-            $usersQuery->where(function ($query) use ($search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+            // إذا تم إدخال نص بحث
+            if (!empty($search)) {
+                $usersQuery->where(function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+
+            // تصفية حسب course_id إن وجد
+            if ($courseId) {
+                $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
+                    $query->where('course_id', $courseId);
+                });
+            }
+
+            // تنفيذ الاستعلام مع الترتيب والصفحات
+            $users = $usersQuery->orderBy('id', 'asc')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            // تحويل البيانات بشكل منسق
+            $data = $users->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'phone_number' => $user->phone_number,
+                    'role' => $user->role,
+                    'profile_image' => $user->profile_image ? asset($user->profile_image) : null,
+                    'created_at' => $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : null,
+                ];
             });
-        }
 
-        // تصفية حسب course_id إن وجد
-        if ($courseId) {
-            $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
-                $query->where('course_id', $courseId);
-            });
-        }
+            if ($data->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No users found.',
+                ], 404);
+            }
 
-        // تنفيذ الاستعلام مع الترتيب والصفحات
-        $users = $usersQuery->orderBy('id', 'asc')
-                            ->paginate($perPage, ['*'], 'page', $page);
-
-        // تحويل البيانات بشكل منسق
-        $data = $users->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone_number' => $user->phone_number,
-                'role' => $user->role,
-                'profile_image' => $user->profile_image ? asset($user->profile_image) : null,
-                'created_at' => $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : null,
-            ];
-        });
-
-        if ($data->isEmpty()) {
+            return response()->json([
+                'status' => true,
+                'data' => $data,
+                'pagination' => [
+                    'current_page' => $users->currentPage(),
+                    'last_page' => $users->lastPage(),
+                    'per_page' => $users->perPage(),
+                    'total' => $users->total(),
+                ]
+            ]);
+        } catch (Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'No users found.',
-            ], 404);
+                'error' => 'Something went wrong.',
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'status' => true,
-            'data' => $data,
-            'pagination' => [
-                'current_page' => $users->currentPage(),
-                'last_page' => $users->lastPage(),
-                'per_page' => $users->perPage(),
-                'total' => $users->total(),
-            ]
-        ]);
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'error' => 'Something went wrong.',
-            'message' => $e->getMessage(),
-        ], 500);
     }
-}
 
- public function createMeet(Request $request)
+    public function createMeet(Request $request)
     {
         try {
             // ✅ التحقق من البيانات
@@ -375,18 +377,18 @@ class AdminController extends Controller
             // ✅ إرسال البريد الإلكتروني
             foreach ($users as $user) {
                 Mail::raw(
-                    "Hello {$user->name},\n\nA new meeting has been scheduled.\n".
-                    "Topic: {$meeting->summary}\n".
-                    "Start time: {$meeting->start_time}\n".
-                    "Duration: {$meeting->duration} minutes\n".
-                    "Join via: {$joinUrl}\n\n".
-                    "Regards,\n".
-                    "-----------------------------\n\n".
-                    "مرحباً {$user->name},\n\nتم تحديد اجتماع جديد.\n".
-                    "الموضوع: {$meeting->summary}\n".
-                    "وقت البدء: {$meeting->start_time}\n".
-                    "المدة: {$meeting->duration} دقيقة\n".
-                    "رابط الانضمام: {$joinUrl}\n\n".
+                    "Hello {$user->name},\n\nA new meeting has been scheduled.\n" .
+                    "Topic: {$meeting->summary}\n" .
+                    "Start time: {$meeting->start_time}\n" .
+                    "Duration: {$meeting->duration} minutes\n" .
+                    "Join via: {$joinUrl}\n\n" .
+                    "Regards,\n" .
+                    "-----------------------------\n\n" .
+                    "مرحباً {$user->name},\n\nتم تحديد اجتماع جديد.\n" .
+                    "الموضوع: {$meeting->summary}\n" .
+                    "وقت البدء: {$meeting->start_time}\n" .
+                    "المدة: {$meeting->duration} دقيقة\n" .
+                    "رابط الانضمام: {$joinUrl}\n\n" .
                     "مع تحياتنا",
                     function ($message) use ($user, $meeting) {
                         $message->to($user->email)

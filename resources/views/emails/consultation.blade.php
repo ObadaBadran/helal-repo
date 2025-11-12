@@ -52,17 +52,17 @@
     <h2>تفاصيل الاستشارة المدفوعة / <span style="color:#007bff;">Paid Consultation Details</span></h2>
 
     <p class="dual-text">
-        تم استلام طلب استشارة مدفوعة جديدة من:  
+        تم استلام طلب استشارة مدفوعة جديدة من:
         <span class="en">A new paid consultation has been received from:</span>
     </p>
 
     <p class="dual-text"><strong>الاسم (Name):</strong> {{ $consultation->name }}</p>
     <p class="dual-text"><strong>البريد الإلكتروني (Email):</strong> {{ $consultation->email }}</p>
     <p class="dual-text"><strong>رقم الهاتف (Phone):</strong> {{ $consultation->phone }}</p>
-    <p class="dual-text"><strong>المبلغ (Amount):</strong> {{ $consultation->amount }} {{ $consultation->currency }}</p>
+    <p class="dual-text"><strong>المبلغ (Amount):</strong> {{ $consultation->information->price }} {{ $consultation->information->currency }}</p>
 
     <div class="footer dual-text">
-        شكراً لتعاملك معنا.  
+        شكراً لتعاملك معنا.
         <span class="en">Thank you for choosing our service.</span>
     </div>
 
