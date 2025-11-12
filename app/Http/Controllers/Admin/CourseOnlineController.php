@@ -41,7 +41,8 @@ class CourseOnlineController extends Controller
             if (!$this->checkAppointmentConflict($request->date, $request->start_time, $request->end_time)) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'There is another appointment at this time.'
+                    'message' => 'Failed to create course.',
+                    'error' => 'There is another appointment at this time.'
                 ], 400);
             }
 
@@ -108,7 +109,7 @@ class CourseOnlineController extends Controller
             }
 
             $course->update(['meet_url' => $meetUrl]);
-            
+
             foreach ($enrolledUsers as $user) {
                 $roomId = basename($course->meet_url);
                 $joinUrl = "http://localhost:5173/Helal-Aljaberi/course/{$roomId}";
@@ -180,7 +181,8 @@ class CourseOnlineController extends Controller
                     $request->end_time ?? $appointment->start_time, $appointment->id)) {
                     return response()->json([
                         'status' => false,
-                        'message' => 'There is another appointment at this time.'
+                        'message' => 'Failed to update course.',
+                        'error' => 'There is another appointment at this time.'
                     ], 400);
                 }
 
