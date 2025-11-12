@@ -13,7 +13,7 @@ class CourseOnline extends Model
     protected $table = 'course_online';
 
     protected $fillable = [
-        'name', 'description', 'price', 'cover_image', 'meet_url', 'appointment_id'
+        'name', 'description', 'name_ar', 'description_ar', 'price', 'cover_image', 'meet_url', 'appointment_id'
     ];
 
     public function enrolls()
