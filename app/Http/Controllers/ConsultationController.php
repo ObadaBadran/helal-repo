@@ -54,14 +54,16 @@ class ConsultationController extends Controller
             if (!$this->checkAvailabilityForDay($request->date, $validated['start_time'], $validated['end_time'])) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'The appointment is outside the availability range.'
+                    'message' => 'Failed to create consultation and Stripe checkout session.',
+                    'error' => 'The appointment is outside the availability range.'
                 ], 400);
             }
 
             if (!$this->checkAppointmentConflict($request->date, $validated['start_time'], $validated['end_time'])) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'There is another appointment at this time.'
+                    'message' => 'Failed to create consultation and Stripe checkout session.',
+                    'error' => 'There is another appointment at this time.'
                 ], 400);
             }
 
