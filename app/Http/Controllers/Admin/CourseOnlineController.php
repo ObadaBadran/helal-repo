@@ -25,8 +25,8 @@ class CourseOnlineController extends Controller
     {
         try {
             $data = $request->validate([
-                'name' => 'required|string|max:255',
-                'description' => 'required|string',
+                'name_en' => 'required|string|max:255',
+                'description_en' => 'required|string',
                 'name_ar' => 'required|string|max:255',
                 'description_ar' => 'required|string',
                 // 'duration' => 'required|integer',
@@ -115,16 +115,16 @@ class CourseOnlineController extends Controller
 
                 Mail::raw(
                     "Hello {$user->name},\n\nYour online course is ready.\n" .
-                    "Course: {$course->name}\n" .
+                    "Course: {$course->name_en}\n" .
                     "Date: {$course->appointment->date}\n" .
                     "Start time: {$course->appointment->start_time}\n" .
                     "End time: {$course->appointment->end_time}\n" .
                     // "Duration: {$course->duration} minutes\n" .
-                    "Price: {$course->price}\n" .
+                    "Price: {$course->price_usd} USD, {$course->price_aed} AED\n" .
                     "Join via: {$joinUrl}\n",
                     function ($message) use ($user, $course) {
                         $message->to($user->email)
-                            ->subject("Online Course Ready: {$course->name}");
+                            ->subject("Online Course Ready: {$course->name_en}");
                     }
                 );
             }
@@ -157,8 +157,8 @@ class CourseOnlineController extends Controller
             $course = CourseOnline::findOrFail($id);
 
             $data = $request->validate([
-                'name' => 'sometimes|required|string|max:255',
-                'description' => 'sometimes|required|string',
+                'name_en' => 'sometimes|string|max:255',
+                'description_en' => 'sometimes|string',
                 'name_ar' => 'sometimes|string|max:255',
                 'description_ar' => 'sometimes|string',
                 // 'duration' => 'sometimes|required|integer',
@@ -243,8 +243,8 @@ class CourseOnlineController extends Controller
             $data = $courses->map(function ($course) use ($lang) {
                 return [
                     'id' => $course->id,
-                    'name' => $lang === 'ar' ? $course->name_ar : $course->name,
-                    'description' => $lang === 'ar' ? $course->description_ar : $course->description,
+                    'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
+                    'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
                     // 'duration' => $course->duration,
                     'price_aed' => $course->price_aed,
                     'price_usd' => $course->price_usd,
@@ -301,8 +301,8 @@ class CourseOnlineController extends Controller
             return [
                 'enroll_id' => $enroll->id,
                 'course_id' => $course->id,
-                'name' => $lang === 'ar' ? $course->name_ar : $course->name,
-                'description' => $lang === 'ar' ? $course->description_ar : $course->description,
+                'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
+                'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
                 // 'duration' => $course->duration,
                 'price_aed' => $course->price_aed,
                 'price_usd' => $course->price_usd,
@@ -348,8 +348,8 @@ class CourseOnlineController extends Controller
                 'status' => true,
                 'data' => [
                     'id' => $course->id,
-                    'name' => $lang === 'ar' ? $course->name_ar : $course->name,
-                    'description' => $lang === 'ar' ? $course->description_ar : $course->description,
+                    'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
+                    'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
                     // 'duration' => $course->duration,
                     'price_aed' => $course->price_aed,
                     'price_usd' => $course->price_usd,
