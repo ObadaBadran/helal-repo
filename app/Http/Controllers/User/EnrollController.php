@@ -160,6 +160,7 @@ class EnrollController extends Controller
 
         $enrolls = Enroll::with('course')
             ->where('user_id', $user->id)
+            ->whereNotNull('course_id')
             ->where('payment_status', 'paid')
             ->orderBy('created_at', 'desc')
         ->get();
