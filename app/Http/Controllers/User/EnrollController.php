@@ -33,6 +33,7 @@ class EnrollController extends Controller
         $validatedData = $request->validate([
             'course_id' => 'nullable|integer|exists:courses,id',
             'course_online_id' => 'nullable|integer|exists:course_online,id',
+            'private_information_id' => 'nullable|integer|exists:private_lesson_informations,id',
             'currency' => 'nullable|string',
             'return_url' => 'required|url',
             'cancel_url' => 'required|url',
@@ -44,8 +45,19 @@ class EnrollController extends Controller
         ], 422);
     }
 
-    if (!$request->course_id && !$request->course_online_id) {
+    // التحقق من وجود نوع واحد على الأقل
+    $courseTypes = array_filter([
+        'course' => $request->course_id,
+        'online_course' => $request->course_online_id,
+        'private_lesson' => $request->private_information_id
+    ]);
+
+    if (count($courseTypes) === 0) {
         return response()->json(['status' => 'error', 'message' => 'Course type missing'], 422);
+    }
+
+    if (count($courseTypes) > 1) {
+        return response()->json(['status' => 'error', 'message' => 'Only one course type allowed'], 422);
     }
 
     $currency = $validatedData['currency'] ?? 'usd';
@@ -55,25 +67,39 @@ class EnrollController extends Controller
         $course = Course::findOrFail($validatedData['course_id']);
         $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
         $productName = "Course: " . $course->title_en;
-    } else {
+        $type = 'course';
+        
+    } elseif ($request->course_online_id) {
         // === كورس أونلاين ===
         $course = CourseOnline::findOrFail($validatedData['course_online_id']);
         $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
         $productName = "Online Course: " . $course->name;
+        $type = 'online_course';
+        
+    } else {
+        // === Private Lesson ===
+        $privateLesson = \App\Models\PrivateLessonInformation::with('lesson')->findOrFail($validatedData['private_information_id']);
+        $amount = $currency === 'usd' ? $privateLesson->price_usd : $privateLesson->price_aed;
+        $productName = "Private Lesson - " . ($privateLesson->place_en ?? 'Lesson');
+        $type = 'private_lesson';
     }
 
     // تحقق إن كان مسجل سابقًا
-    if (Enroll::where('user_id', $user->id)
-        ->when($request->course_id, fn($q)=> $q->where('course_id', $request->course_id))
-        ->when($request->course_online_id, fn($q)=> $q->where('course_online_id', $request->course_online_id))
+    $existingEnrollment = Enroll::where('user_id', $user->id)
+        ->when($request->course_id, fn($q) => $q->where('course_id', $request->course_id))
+        ->when($request->course_online_id, fn($q) => $q->where('course_online_id', $request->course_online_id))
+        ->when($request->private_information_id, fn($q) => $q->where('private_information_id', $request->private_information_id))
         ->where('payment_status', 'paid')
-        ->exists()) {
+        ->exists();
+
+    if ($existingEnrollment) {
         return response()->json(['status' => 'info', 'message' => 'Already enrolled'], 409);
     }
 
     $enrollment = Enroll::create([
         'course_id' => $request->course_id,
         'course_online_id' => $request->course_online_id,
+        'private_information_id' => $request->private_information_id,
         'user_id' => $user->id,
         'payment_status' => 'pending',
         'payment_method' => 'Stripe',
@@ -92,6 +118,9 @@ class EnrollController extends Controller
                 'unit_amount' => intval($amount * 100),
                 'product_data' => [
                     'name' => $productName,
+                    'description' => $type === 'private_lesson' ? 
+                        'Duration: ' . $privateLesson->duration . ' minutes' : 
+                        ($course->description_en ?? ''),
                 ],
             ],
             'quantity' => 1,
@@ -104,6 +133,7 @@ class EnrollController extends Controller
             'user_id' => $user->id,
             'course_id' => $request->course_id,
             'course_online_id' => $request->course_online_id,
+            'private_information_id' => $request->private_information_id,
         ],
     ]);
 
@@ -113,6 +143,7 @@ class EnrollController extends Controller
         'status' => 'redirect',
         'redirect_url' => $session->url,
         'session_id' => $session->id,
+        'order_id' => $enrollment->id,
     ]);
 }
 
