@@ -58,7 +58,7 @@ class EnrollController extends Controller
     } else {
         // === كورس أونلاين ===
         $course = CourseOnline::findOrFail($validatedData['course_online_id']);
-        $amount = $course->price;
+        $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
         $productName = "Online Course: " . $course->name;
     }
 
@@ -83,7 +83,7 @@ class EnrollController extends Controller
     ]);
 
     Stripe::setApiKey(config('services.stripe.secret'));
-    
+
     $session = StripeSession::create([
         'payment_method_types' => ['card'],
         'line_items' => [[
