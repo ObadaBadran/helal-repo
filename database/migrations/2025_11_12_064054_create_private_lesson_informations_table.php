@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('consultations', function (Blueprint $table) {
-             $table->dropColumn(['consultation_date', 'consultation_time']);
+        Schema::create('private_lesson_informations', function (Blueprint $table) {
+            $table->id();
+            $table->string('place'); 
+            $table->decimal('price', 8, 2); 
+            $table->string('duration');
+            $table->timestamps();
         });
     }
 
@@ -21,9 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('consultations', function (Blueprint $table) {
-             $table->date('consultation_date')->nullable();
-            $table->time('consultation_time')->nullable();
-        });
+        Schema::dropIfExists('private_lesson_informations');
     }
 };
