@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\AvailabilityController;
 use App\Http\Controllers\ConsultationInformationController;
 use App\Http\Controllers\User\AppointmentController;
 use App\Http\Controllers\PrivateLessonInformationController;
+use App\Http\Controllers\PrivateLessonController;
 use Illuminate\Support\Facades\Mail;
 
 Route::post('/admin/create-meet', [AdminController::class, 'createMeet'])->middleware('admin');
@@ -153,12 +154,23 @@ Route::middleware(['auth:api', 'admin'])->group(function () {
     Route::put('admin/consultations/update/{id}', [ConsultationInformationController::class, 'update']);
     Route::delete('admin/consultations/delete/{id}', [ConsultationInformationController::class, 'destroy']);
 });
+
 //private lessons
-Route::get('/private-lesson/get', [PrivateLessonInformationController::class, 'index']);
-Route::get('/private-lesson/show/{id}', [PrivateLessonInformationController::class, 'show']);
+Route::get('/private-lessons', [PrivateLessonController::class, 'index']);
+Route::get('/private-lessons/{id}', [PrivateLessonController::class, 'show']);
 
 Route::middleware(['auth:api', 'admin'])->group(function () {
-    Route::post('admin/private-lesson/add', [PrivateLessonInformationController::class, 'store']);
-    Route::put('admin/privale-lesson/update/{id}', [PrivateLessonInformationController::class, 'update']);
-    Route::delete('admin/privale-lesson/delete/{id}', [PrivateLessonInformationController::class, 'destroy']);
+Route::post('admin/private-lessons', [PrivateLessonController::class, 'store']);
+Route::put('admin/private-lessons/{id}', [PrivateLessonController::class, 'update']);
+Route::delete('admin/private-lessons/{id}', [PrivateLessonController::class, 'destroy']);
+});
+
+//private lessons informations
+
+Route::get('private-lesson-information/{private_lesson_id}', [PrivateLessonInformationController::class, 'index']);
+Route::get('private-lesson-information/show/{id}', [PrivateLessonInformationController::class, 'show']);
+Route::prefix('admin/private-lesson-information')->middleware(['auth:api', 'admin'])->group(function () {    
+    Route::post('/add/{private_lesson_id}', [PrivateLessonInformationController::class, 'store']);
+    Route::put('/update/{id}', [PrivateLessonInformationController::class, 'update']);
+    Route::delete('delete/{id}', [PrivateLessonInformationController::class, 'destroy']);
 });

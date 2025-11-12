@@ -18,6 +18,11 @@ return new class extends Migration
 
             $table->foreignId('course_online_id')->nullable()->constrained('course_online')
       ->cascadeOnDelete()->cascadeOnUpdate();
+     /*  $table->foreignId('private_information_id')
+      ->nullable()
+      ->constrained('private_lesson_informations')
+      ->cascadeOnDelete()
+      ->cascadeOnUpdate();*/
             $table->foreignId('user_id')->constrained('users')
             ->cascadeOnDelete()->cascadeOnUpdate();
             $table->enum('payment_status', ['pending', 'paid', 'canceled'])->default('pending');

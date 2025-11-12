@@ -28,6 +28,11 @@ class Enroll extends Model
         return $this->belongsTo(Course::class);
     }
 
+    public function privateLessonInformation(): BelongsTo
+    {
+        return $this->belongsTo(PrivateLessonInformation::class, 'private_information_id');
+    }
+
     public function courseOnline()
 {
     return $this->belongsTo(CourseOnline::class, 'course_online_id');
