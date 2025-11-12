@@ -93,8 +93,6 @@ class CourseOnlineController extends Controller
                 $meetUrl = "https://meet.jit.si/$roomName";
             }
 
-            $course->update(['meet_url' => $meetUrl]);
-
             $enrolledUsers = $course->enrolls()
                 ->where('payment_status', 'paid')
                 ->with('user')
@@ -109,6 +107,8 @@ class CourseOnlineController extends Controller
                 ], 404);
             }
 
+            $course->update(['meet_url' => $meetUrl]);
+            
             foreach ($enrolledUsers as $user) {
                 $roomId = basename($course->meet_url);
                 $joinUrl = "http://localhost:5173/Helal-Aljaberi/course/{$roomId}";
