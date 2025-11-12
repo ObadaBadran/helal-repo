@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('course_online', function (Blueprint $table) {
             $table->id();
-             $table->string('name');
-            $table->text('description');
+             $table->string('name_en');
+            $table->text('description_en');
             $table->string('name_ar');
             $table->text('description_ar');
             // $table->integer('duration');

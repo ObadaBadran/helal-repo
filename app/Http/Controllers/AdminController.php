@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Consultation;
 use App\Models\Course;
+use App\Models\CourseOnline;
 use App\Models\User;
 use App\Models\Meeting;
 use App\PaginationTrait;
@@ -39,6 +40,13 @@ class AdminController extends Controller
                 if(!$course) return response()->json(['message' => 'Course not found'], 404);
                 $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
                     $query->where('course_id', $courseId);
+                });
+            } else if($request->has('course_online_id')) {
+                $courseId = $request->query('course_online_id');
+                $course = CourseOnline::find($courseId);
+                if(!$course) return response()->json(['message' => 'Course not found'], 404);
+                $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
+                    $query->where('course_online_id', $courseId);
                 });
             }
 
