@@ -18,7 +18,8 @@ return new class extends Migration
             $table->string('name_ar');
             $table->text('description_ar');
             // $table->integer('duration');
-            $table->decimal('price', 10, 2);
+            $table->decimal('price_aed', 10, 2)->default(0);
+            $table->decimal('price_usd', 10, 2)->default(0);
             // $table->dateTime('date');
             $table->string('cover_image')->nullable();
             $table->string('meet_url')->nullable();
