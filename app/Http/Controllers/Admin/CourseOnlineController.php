@@ -27,6 +27,8 @@ class CourseOnlineController extends Controller
             $data = $request->validate([
                 'name' => 'required|string|max:255',
                 'description' => 'required|string',
+                'name_ar' => 'required|string|max:255',
+                'description_ar' => 'required|string',
                 // 'duration' => 'required|integer',
                 'price' => 'required|numeric',
                 'date' => 'required|date_format:d-m-Y',
@@ -156,6 +158,8 @@ class CourseOnlineController extends Controller
             $data = $request->validate([
                 'name' => 'sometimes|required|string|max:255',
                 'description' => 'sometimes|required|string',
+                'name_ar' => 'required|string|max:255',
+                'description_ar' => 'required|string',
                 // 'duration' => 'sometimes|required|integer',
                 'price' => 'sometimes|required|numeric',
                 'date' => 'sometimes|date_format:d-m-Y',
@@ -221,6 +225,7 @@ class CourseOnlineController extends Controller
     public function index(Request $request)
     {
         try {
+            $lang = $request->query('lang', 'en');
             $page = (int)$request->query('page', 1);
             $perPage = (int)$request->query('per_page', 10);
 
@@ -233,11 +238,11 @@ class CourseOnlineController extends Controller
                 ], 404);
             }
 
-            $data = $courses->map(function ($course) {
+            $data = $courses->map(function ($course) use ($lang) {
                 return [
                     'id' => $course->id,
-                    'name' => $course->name,
-                    'description' => $course->description,
+                    'name' => $lang === 'ar' ? $course->name_ar : $course->name,
+                    'description' => $lang === 'ar' ? $course->description_ar : $course->description,
                     // 'duration' => $course->duration,
                     'price' => $course->price,
                     // 'date' => $course->date,
@@ -271,6 +276,8 @@ class CourseOnlineController extends Controller
      */
     public function myCourses(Request $request)
     {
+        $lang = $request->query('lang', 'en');
+
         $user = auth('api')->user();
         if (!$user) {
             return response()->json([
@@ -284,15 +291,15 @@ class CourseOnlineController extends Controller
             ->whereNotNull('course_online_id')
             ->get();
 
-        $data = $enrolls->map(function ($enroll) {
+        $data = $enrolls->map(function ($enroll) use ($lang) {
             $course = $enroll->courseOnline;
             if (!$course) return null;
 
             return [
                 'enroll_id' => $enroll->id,
                 'course_id' => $course->id,
-                'name' => $course->name,
-                'description' => $course->description,
+                'name' => $lang === 'ar' ? $course->name_ar : $course->name,
+                'description' => $lang === 'ar' ? $course->description_ar : $course->description,
                 // 'duration' => $course->duration,
                 'price' => $course->price,
                 // 'date' => $course->date,
@@ -314,6 +321,7 @@ class CourseOnlineController extends Controller
     public function show(Request $request, CourseOnline $course)
     {
         try {
+            $lang = $request->query('lang', 'en');
             $user = auth('api')->user();
 
             if ($course->cover_image) {
@@ -336,8 +344,8 @@ class CourseOnlineController extends Controller
                 'status' => true,
                 'data' => [
                     'id' => $course->id,
-                    'name' => $course->name,
-                    'description' => $course->description,
+                    'name' => $lang === 'ar' ? $course->name_ar : $course->name,
+                    'description' => $lang === 'ar' ? $course->description_ar : $course->description,
                     // 'duration' => $course->duration,
                     'price' => $course->price,
                     // 'date' => $course->date,
