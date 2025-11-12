@@ -10,10 +10,22 @@ use Exception;
 class PrivateLessonInformationController extends Controller
 {
     // جلب كل الدروس الخصوصية
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $lessons = PrivateLessonInformation::all();
+            $lang = $request->query('lang', 'en');
+
+            $lessons = PrivateLessonInformation::all()->map(function ($lesson) use ($lang) {
+                return [
+                    'id' => $lesson->id,
+                    'place' => $lang === 'ar' ? ($lesson->place_ar ?? $lesson->place_en) : $lesson->place_en,
+                    'price_aed' => $lesson->price_aed,
+                    'price_usd' => $lesson->price_usd,
+                    'duration' => $lesson->duration,
+                    'created_at' => $lesson->created_at,
+                    'updated_at' => $lesson->updated_at,
+                ];
+            });
 
             return response()->json([
                 'status' => true,
@@ -31,9 +43,11 @@ class PrivateLessonInformationController extends Controller
     }
 
     // عرض درس خصوصي محدد
-    public function show($id)
+    public function show(Request $request, $id)
     {
         try {
+            $lang = $request->query('lang', 'en');
+
             $lesson = PrivateLessonInformation::find($id);
 
             if (!$lesson) {
@@ -46,7 +60,15 @@ class PrivateLessonInformationController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Private lesson retrieved successfully',
-                'data' => $lesson
+                'data' => [
+                    'id' => $lesson->id,
+                    'place' => $lang === 'ar' ? $lesson->place_ar : $lesson->place_en,
+                    'price_aed' => $lesson->price_aed,
+                    'price_usd' => $lesson->price_usd,
+                    'duration' => $lesson->duration,
+                    'created_at' => $lesson->created_at,
+                    'updated_at' => $lesson->updated_at,
+                ]
             ], 200);
 
         } catch (Exception $e) {
@@ -63,9 +85,12 @@ class PrivateLessonInformationController extends Controller
     {
         try {
             $validated = $request->validate([
-                'place' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0',
-                'duration' => 'required|string|max:100',
+                'place_en' => 'required|string|max:255',
+                'place_ar' => 'required|string|max:255',
+                'price_aed' => 'required|numeric|min:0',
+                'price_usd' => 'required|numeric|min:0',
+                'duration' => 'required|integer|min:1|max:100',
+
             ]);
 
             $lesson = PrivateLessonInformation::create($validated);
@@ -106,9 +131,11 @@ class PrivateLessonInformationController extends Controller
             }
 
             $validated = $request->validate([
-                'place' => 'sometimes|string|max:255',
-                'price' => 'sometimes|numeric|min:0',
-                'duration' => 'sometimes|string|max:100',
+                'place_en' => 'required|string|max:255',
+                'place_ar' => 'required|string|max:255',
+                'price_aed' => 'required|numeric|min:0',
+                'price_usd' => 'required|numeric|min:0',
+                'duration' => 'sometimes|integer|max:100',
             ]);
 
             $lesson->update($validated);

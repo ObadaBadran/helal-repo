@@ -13,9 +13,11 @@ return new class extends Migration
     {
         Schema::create('private_lesson_informations', function (Blueprint $table) {
             $table->id();
-            $table->string('place'); 
-            $table->decimal('price', 8, 2); 
-            $table->string('duration');
+            $table->string('place_ar');
+            $table->string('place_en'); 
+             $table->decimal('price_aed', 10, 2)->default(0);
+            $table->decimal('price_usd', 10, 2)->default(0);
+            $table->integer('duration');
             $table->timestamps();
         });
     }

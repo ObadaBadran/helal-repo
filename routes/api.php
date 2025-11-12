@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\CourseOnlineController;
 use App\Http\Controllers\Admin\AvailabilityController;
 use App\Http\Controllers\ConsultationInformationController;
 use App\Http\Controllers\User\AppointmentController;
+use App\Http\Controllers\PrivateLessonInformationController;
 use Illuminate\Support\Facades\Mail;
 
 Route::post('/admin/create-meet', [AdminController::class, 'createMeet'])->middleware('admin');
@@ -152,4 +153,12 @@ Route::middleware(['auth:api', 'admin'])->group(function () {
     Route::put('admin/consultations/update/{id}', [ConsultationInformationController::class, 'update']);
     Route::delete('admin/consultations/delete/{id}', [ConsultationInformationController::class, 'destroy']);
 });
+//private lessons
+Route::get('/private-lesson/get', [PrivateLessonInformationController::class, 'index']);
+Route::get('/private-lesson/show/{id}', [PrivateLessonInformationController::class, 'show']);
 
+Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::post('admin/private-lesson/add', [PrivateLessonInformationController::class, 'store']);
+    Route::put('admin/privale-lesson/update/{id}', [PrivateLessonInformationController::class, 'update']);
+    Route::delete('admin/privale-lesson/delete/{id}', [PrivateLessonInformationController::class, 'destroy']);
+});
