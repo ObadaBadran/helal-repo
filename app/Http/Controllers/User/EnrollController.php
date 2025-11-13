@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseOnline;
 use App\Models\Enroll;
+use App\Models\PrivateLessonInformation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -68,19 +69,19 @@ class EnrollController extends Controller
         $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
         $productName = "Course: " . $course->title_en;
         $type = 'course';
-        
+
     } elseif ($request->course_online_id) {
         // === كورس أونلاين ===
         $course = CourseOnline::findOrFail($validatedData['course_online_id']);
         $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
         $productName = "Online Course: " . $course->name;
         $type = 'online_course';
-        
+
     } else {
         // === Private Lesson ===
-        $privateLesson = \App\Models\PrivateLessonInformation::with('lesson')->findOrFail($validatedData['private_information_id']);
+        $privateLesson = PrivateLessonInformation::with('lesson')->findOrFail($validatedData['private_information_id']);
         $amount = $currency === 'usd' ? $privateLesson->price_usd : $privateLesson->price_aed;
-        $productName = "Private Lesson - " . ($privateLesson->place_en ?? 'Lesson');
+        $productName = "Private Lesson - " . ($privateLesson->lesson->title_en ?? 'Lesson');
         $type = 'private_lesson';
     }
 
@@ -118,8 +119,8 @@ class EnrollController extends Controller
                 'unit_amount' => intval($amount * 100),
                 'product_data' => [
                     'name' => $productName,
-                    'description' => $type === 'private_lesson' ? 
-                        'Duration: ' . $privateLesson->duration . ' minutes' : 
+                    'description' => $type === 'private_lesson' ?
+                        'Duration: ' . $privateLesson->duration . ' minutes' :
                         ($course->description_en ?? ''),
                 ],
             ],

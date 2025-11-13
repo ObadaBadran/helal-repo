@@ -11,6 +11,7 @@ class Enroll extends Model
         'user_id',
         'course_id',
         'course_online_id',
+        'private_information_id',
         'payment_status',
         'payment_method',
         'amount',

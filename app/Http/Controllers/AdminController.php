@@ -39,14 +39,16 @@ class AdminController extends Controller
                 $course = Course::find($courseId);
                 if (!$course) return response()->json(['message' => 'Course not found'], 404);
                 $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
-                    $query->where('course_id', $courseId);
+                    $query->where('course_id', $courseId)
+                        ->where('payment_status', 'paid');
                 });
             } else if ($request->has('course_online_id')) {
                 $courseId = $request->query('course_online_id');
                 $course = CourseOnline::find($courseId);
                 if (!$course) return response()->json(['message' => 'Course not found'], 404);
                 $usersQuery->whereHas('enrolls', function ($query) use ($courseId) {
-                    $query->where('course_online_id', $courseId);
+                    $query->where('course_online_id', $courseId)
+                        ->where('payment_status', 'paid');
                 });
             }
 
@@ -179,6 +181,7 @@ class AdminController extends Controller
                     'is_done' => $consultation->is_done,
                     'information' => $consultation->information,
                     'appointment' => $consultation->appointment,
+                    'currency' => $consultation->currency,
                     'created_at' => $consultation->created_at->toDateTimeString(),
                 ];
             });
