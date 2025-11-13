@@ -123,7 +123,7 @@ class NewsSectionController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Something went wrong.',
-                'error_message' => $e->getMessage(),
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
