@@ -16,7 +16,7 @@ class PrivateLessonInformation extends Model
         'place_en',
         'price_aed',
         'price_usd',
-        'duration'
+        // 'duration'
     ];
 
     public function lesson(): BelongsTo
