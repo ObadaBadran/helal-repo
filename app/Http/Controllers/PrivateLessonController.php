@@ -10,35 +10,47 @@ use Exception;
 class PrivateLessonController extends Controller
 {
     // جلب كل الدروس الخصوصية
-    public function index(Request $request)
-    {
-        try {
-            $lang = $request->query('lang', 'en');
+   public function index(Request $request)
+{
+    try {
+        $lang = $request->query('lang', 'en');
+        $page = (int)$request->query('page', 1);
+        $perPage = (int)$request->query('per_page', 10);
 
-            $lessons = PrivateLesson::all()->map(function ($lesson) use ($lang) {
-                return [
-                    'id' => $lesson->id,
-                    'title' => $lang === 'ar' ? $lesson->title_ar : $lesson->title_en,
-                    'description' => $lang === 'ar' ? $lesson->description_ar : $lesson->description_en,
-                    'created_at' => $lesson->created_at,
-                    'updated_at' => $lesson->updated_at,
-                ];
-            });
+        // استخدام paginate بدلاً من all
+        $lessonsPaginated = PrivateLesson::paginate($perPage, ['*'], 'page', $page);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Private lessons retrieved successfully',
-                'data' => $lessons
-            ], 200);
+        // تحويل البيانات
+        $data = $lessonsPaginated->map(function ($lesson) use ($lang) {
+            return [
+                'id' => $lesson->id,
+                'title' => $lang === 'ar' ? $lesson->title_ar : $lesson->title_en,
+                'description' => $lang === 'ar' ? $lesson->description_ar : $lesson->description_en,
+                'created_at' => $lesson->created_at,
+                'updated_at' => $lesson->updated_at,
+            ];
+        });
 
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to retrieve private lessons',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'status' => true,
+            'message' => 'Private lessons retrieved successfully',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $lessonsPaginated->currentPage(),
+                'last_page' => $lessonsPaginated->lastPage(),
+                'per_page' => $lessonsPaginated->perPage(),
+                'total' => $lessonsPaginated->total(),
+            ]
+        ], 200);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to retrieve private lessons',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     // عرض درس خصوصي محدد
     public function show($id)

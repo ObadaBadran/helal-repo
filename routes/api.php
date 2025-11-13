@@ -27,7 +27,7 @@ Route::post('/admin/send-meet-emails/{meeting}', [AdminController::class, 'sendM
 Route::post('register', [AuthController::class, 'register']);
 Route::post('login', [AuthController::class, 'login']);
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware('auth.api')->group(function () {
     Route::get('me', [AuthController::class, 'me']);
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
@@ -38,7 +38,7 @@ Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 //videoCall*********************************************************************************
-Route::middleware('auth:api')->group(function () {
+Route::middleware('auth.api')->group(function () {
     Route::post('/call-user', [VideoChatController::class, 'callUser']);
     Route::post('/accept-call', [VideoChatController::class, 'acceptCall']);
 
@@ -53,7 +53,7 @@ Route::prefix('news-sections')->group(function () {
     Route::get('/{id}', [NewsSectionController::class, 'show']);
 
 
-    Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::middleware(['auth.api', 'admin'])->group(function () {
         Route::post('/', [NewsSectionController::class, 'store']);
         Route::post('/{id}', [NewsSectionController::class, 'update']);
         Route::delete('/{id}', [NewsSectionController::class, 'destroy']);
@@ -79,7 +79,7 @@ Route::post('/contact/send', function (Request $request) {
     ]);
 });
 // Admin
-Route::middleware(['auth:api', 'admin'])->group(function () {
+Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::post('/admin/courses/store', [CourseController::class, 'store']);
     Route::post('/admin/courses/update/{id}', [CourseController::class, 'update']);
     Route::delete('/admin/courses/delete/{id}', [CourseController::class, 'destroy']);
@@ -103,12 +103,12 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
 Route::get('/stripe/cancel', [StripeWebhookController::class, 'cancel']);
 
 
-Route::middleware('auth:api')->get('/enrolled_courses', [EnrollController::class, 'showEnrollCourses']);
+Route::middleware('auth.api')->get('/enrolled_courses', [EnrollController::class, 'showEnrollCourses']);
 
 
 //Admin
 
-Route::middleware(['auth:api', 'admin'])->group(function () {
+Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::get('admin/users', [AdminController::class, 'getUsers']);
     Route::get('admin/users/by-name-email', [AdminController::class, 'getUsersByNameAndEmail']);
     Route::get('admin/consultations', [AdminController::class, 'getConsultations']);
@@ -124,23 +124,23 @@ Route::get('/courses-online/show/{course}', [CourseOnlineController::class, 'sho
 Route::get('/courses-online/get-my-courses', [CourseOnlineController::class, 'myCourses']);
 
 
-Route::middleware(['auth:api', 'admin'])->group(function () {
+Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::post('admin/online-course/add', [CourseOnlineController::class, 'store']);
     Route::post('admin/online-course/add-meet/{course}', [CourseOnlineController::class, 'addMeetUrl']);
     Route::post('admin/online-course/update/{course}', [CourseOnlineController::class, 'update']);
     Route::delete('admin/online-course/delete/{course}', [CourseOnlineController::class, 'destroy']);
 });
 
-Route::middleware(['auth:api', 'admin'])->group(function () {
+Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::post('admin/availabilities', [AvailabilityController::class, 'store']);
     Route::delete('admin/availabilities/{availability}', [AvailabilityController::class, 'destroy']);
 });
 
-Route::middleware(['auth:api'])->group(function () {
+Route::middleware(['auth.api'])->group(function () {
     Route::get('availabilities', [AvailabilityController::class, 'index']);
 });
 
-Route::middleware(['auth:api'])->group(function () {
+Route::middleware(['auth.api'])->group(function () {
     Route::get('appointments', [AppointmentController::class, 'index']);
 });
 
@@ -149,7 +149,7 @@ Route::get('/consultations/get', [ConsultationInformationController::class, 'ind
 Route::get('/consultations/show/{id}', [ConsultationInformationController::class, 'show']);
 
 // Routes محمية للمسؤول فقط
-Route::middleware(['auth:api', 'admin'])->group(function () {
+Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::post('admin/consultations/add', [ConsultationInformationController::class, 'store']);
     Route::put('admin/consultations/update/{id}', [ConsultationInformationController::class, 'update']);
     Route::delete('admin/consultations/delete/{id}', [ConsultationInformationController::class, 'destroy']);
@@ -159,7 +159,7 @@ Route::middleware(['auth:api', 'admin'])->group(function () {
 Route::get('/private-lessons', [PrivateLessonController::class, 'index']);
 Route::get('/private-lessons/{id}', [PrivateLessonController::class, 'show']);
 
-Route::middleware(['auth:api', 'admin'])->group(function () {
+Route::middleware(['auth.api', 'admin'])->group(function () {
 Route::post('admin/private-lessons', [PrivateLessonController::class, 'store']);
 Route::put('admin/private-lessons/{id}', [PrivateLessonController::class, 'update']);
 Route::delete('admin/private-lessons/{id}', [PrivateLessonController::class, 'destroy']);
@@ -169,7 +169,7 @@ Route::delete('admin/private-lessons/{id}', [PrivateLessonController::class, 'de
 
 Route::get('private-lesson-information/{private_lesson_id}', [PrivateLessonInformationController::class, 'index']);
 Route::get('private-lesson-information/show/{id}', [PrivateLessonInformationController::class, 'show']);
-Route::prefix('admin/private-lesson-information')->middleware(['auth:api', 'admin'])->group(function () {    
+Route::prefix('admin/private-lesson-information')->middleware(['auth.api', 'admin'])->group(function () {    
     Route::post('/add/{private_lesson_id}', [PrivateLessonInformationController::class, 'store']);
     Route::put('/update/{id}', [PrivateLessonInformationController::class, 'update']);
     Route::delete('delete/{id}', [PrivateLessonInformationController::class, 'destroy']);

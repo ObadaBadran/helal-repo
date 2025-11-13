@@ -20,57 +20,70 @@ class CourseController extends Controller
     use PaginationTrait;
 
 
-    public function index(Request $request)
-    {
-        try {
-            $lang = $request->query('lang', 'en'); 
-            $user = auth('api')->user();
+   public function index(Request $request)
+{
+    try {
+        $lang = $request->query('lang', 'en'); 
+        $page = (int)$request->query('page', 1);
+        $perPage = (int)$request->query('per_page', 10);
+        $user = auth('api')->user();
 
-            $courses = Course::select(
-                'id',
-                'title_en', 'title_ar',
-                'subTitle_en', 'subTitle_ar',
-                'description_en', 'description_ar',
-                'price_usd', 'price_aed',
-                'reviews',
-                'image',
-            )->get()->map(function ($course) use ($lang, $user) {
+        // استخدام paginate بدلاً من get
+        $coursesPaginated = Course::select(
+            'id',
+            'title_en', 'title_ar',
+            'subTitle_en', 'subTitle_ar',
+            'description_en', 'description_ar',
+            'price_usd', 'price_aed',
+            'reviews',
+            'image',
+        )->paginate($perPage, ['*'], 'page', $page);
 
-                $isEnrolled = false;
-                if ($user) {
-                    $isEnrolled = Enroll::where('user_id', $user->id)
-                        ->where('course_id', $course->id)
-                        ->where('payment_status', 'paid')
-                        ->exists();
-                }
+        // تحويل البيانات مع تمرير $perPage للاستخدام الداخلي
+        $data = $coursesPaginated->getCollection()->map(function ($course) use ($lang, $user, $perPage) {
+            $isEnrolled = false;
+            if ($user) {
+                $isEnrolled = Enroll::where('user_id', $user->id)
+                    ->where('course_id', $course->id)
+                    ->where('payment_status', 'paid')
+                    ->exists();
+            }
 
-                return [
-                    'id' => $course->id,
-                    'title' => $lang === 'ar' ? $course->title_ar : $course->title_en,
-                    'subTitle' => $lang === 'ar' ? $course->subTitle_ar : $course->subTitle_en,
-                    'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
-                    'price_aed' => $course->price_aed,
-                    'price_usd' => $course->price_usd,
-                    'reviews' => $course->reviews,
-                    'image' => $course->image ? asset($course->image) : null,
-                    'is_enroll' => $isEnrolled, 
-                ];
-            });
+            return [
+                'id' => $course->id,
+                'title' => $lang === 'ar' ? $course->title_ar : $course->title_en,
+                'subTitle' => $lang === 'ar' ? $course->subTitle_ar : $course->subTitle_en,
+                'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
+                'price_aed' => $course->price_aed,
+                'price_usd' => $course->price_usd,
+                'reviews' => $course->reviews,
+                'image' => $course->image ? asset($course->image) : null,
+                'is_enroll' => $isEnrolled, 
+            ];
+        });
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Courses retrieved successfully',
-                'courses' => $courses
-            ], 200);
+        // إعادة بناء الـ paginator مع البيانات المعدلة
+        $coursesPaginated->setCollection($data);
 
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to retrieve courses',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'status' => true,
+            'data' => $coursesPaginated->items(),
+            'pagination' => [
+                'current_page' => $coursesPaginated->currentPage(),
+                'last_page' => $coursesPaginated->lastPage(),
+                'per_page' => $coursesPaginated->perPage(),
+                'total' => $coursesPaginated->total(),
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to retrieve courses',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
 
     public function store(Request $request)

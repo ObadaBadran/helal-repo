@@ -41,7 +41,7 @@ class EnrollController extends Controller
     } catch (ValidationException $e) {
         return response()->json([
             'status' => 'error',
-            'errors' => $e->errors()
+            'errors' => $e->getMessage()
         ], 422);
     }
 

@@ -111,7 +111,7 @@ class AdminController extends Controller
         } catch (ValidationException $e) {
             return response()->json([
                 'status' => 'error',
-                'errors' => $e->errors()
+                'errors' => $e->getMessage()
             ], 422);
         }
 
@@ -206,7 +206,7 @@ class AdminController extends Controller
     }
 
    public function getUsersByNameAndEmail(Request $request)
-{
+    {
     try {
         // أخذ المدخلات من query parameters بدلاً من request body
         $page = (int)$request->query('page', 1);
@@ -250,10 +250,17 @@ class AdminController extends Controller
         });
 
         if ($data->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No users found.',
-            ], 404);
+           return response()->json([
+            'status' => true,
+            'message' => $data->isEmpty() ? 'No users found.' : 'Users retrieved successfully.',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'per_page' => $users->perPage(),
+                'total' => $users->total(),
+            ]
+        ]);
         }
 
         return response()->json([
@@ -322,7 +329,7 @@ class AdminController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->getMessage()
             ], 422);
         } catch (Exception $e) {
             return response()->json([
@@ -445,7 +452,7 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
         return response()->json([
             'status' => false,
             'message' => 'Validation failed',
-            'errors' => $e->errors()
+            'errors' => $e->getMessage()
         ], 422);
     } catch (Exception $e) {
         return response()->json([
