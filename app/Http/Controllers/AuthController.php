@@ -47,7 +47,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'message' => $validator->errors()->first(),
+                'message' => $validator->getMessage()->first(),
 
             ], 422);
         }
@@ -84,7 +84,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+            return response()->json(['status' => 'error', 'errors' => $validator->getMessage()], 422);
         }
 
         $user = User::where('email', $request->email)->first();
@@ -136,7 +136,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+            return response()->json(['status' => 'error', 'errors' => $validator->getMessage()], 422);
         }
 
         $user = User::where('email', $request->email)->first();
@@ -170,7 +170,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+            return response()->json(['status' => 'error', 'errors' => $validator->getMessage()], 422);
         }
 
         $otpRecord = PasswordOtp::where('otp', $request->otp)->first();
@@ -208,7 +208,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+            return response()->json(['status' => 'error', 'errors' => $validator->getMessage()], 422);
         }
 
         $otpRecord = PasswordOtp::where('otp', $request->otp)->first();
@@ -253,7 +253,7 @@ class AuthController extends Controller
         // إن وُجدت أخطاء في التحقق
         if ($validator->fails()) {
             // اجلب أول رسالة خطأ فقط
-            $firstError = $validator->errors()->first();
+            $firstError = $validator->getMessage()->first();
             return response()->json([
                 'status' => 'error',
                 'message' => $firstError,
@@ -294,7 +294,7 @@ class AuthController extends Controller
     ]);
 
     if ($validator->fails()) {
-        return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+        return response()->json(['status' => 'error', 'errors' => $validator->getMessage()], 422);
     }
 
     // حذف الصورة القديمة إذا موجودة
