@@ -11,38 +11,50 @@ use Exception;
 class ConsultationInformationController extends Controller
 {
     // جلب كل المعلومات
-    public function index(Request $request)
-    {
-        try {
-            $lang = $request->query('lang', 'en');
+   public function index(Request $request)
+{
+    try {
+        $lang = $request->query('lang', 'en');
+        $page = (int)$request->query('page', 1);
+        $perPage = (int)$request->query('per_page', 10);
 
-            $informations = ConsultationInformation::all()->map(function ($info) use ($lang) {
-                return [
-                    'id' => $info->id,
-                    'type' => $lang === 'ar' ? $info->type_ar : $info->type_en,
-                    'price_usd' => $info->price_usd,
-                    'price_aed' => $info->price_aed,
-                    // 'currency' => $info->currency,
-                    'duration' => $info->duration,
-                    'created_at' => $info->created_at,
-                    'updated_at' => $info->updated_at,
-                ];
-            });
+        // استخدام paginate بدلاً من all
+        $informationsPaginated = ConsultationInformation::paginate($perPage, ['*'], 'page', $page);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Consultation informations retrieved successfully',
-                'data' => $informations
-            ], 200);
+        // تحويل البيانات
+        $data = $informationsPaginated->map(function ($info) use ($lang) {
+            return [
+                'id' => $info->id,
+                'type' => $lang === 'ar' ? $info->type_ar : $info->type_en,
+                'price_usd' => $info->price_usd,
+                'price_aed' => $info->price_aed,
+                // 'currency' => $info->currency,
+                'duration' => $info->duration,
+                'created_at' => $info->created_at,
+                'updated_at' => $info->updated_at,
+            ];
+        });
 
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to retrieve consultation informations',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'status' => true,
+            'message' => 'Consultation informations retrieved successfully',
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $informationsPaginated->currentPage(),
+                'last_page' => $informationsPaginated->lastPage(),
+                'per_page' => $informationsPaginated->perPage(),
+                'total' => $informationsPaginated->total(),
+            ]
+        ], 200);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to retrieve consultation informations',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     // عرض معلومات استشارة محددة
     public function show(Request $request, $id)
