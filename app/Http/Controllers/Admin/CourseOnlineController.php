@@ -171,7 +171,7 @@ class CourseOnlineController extends Controller
                 'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
             ]);
 
-            if (isset($validated['date']) || isset($validated['start_time']) || isset($validated['end_time'])) {
+            if (isset($data['date']) || isset($data['start_time']) || isset($data['end_time'])) {
                 $appointment = $course->appointment;
 
                 $data['date'] = isset($validated['date']) ?
