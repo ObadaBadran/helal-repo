@@ -174,7 +174,7 @@ class PrivateLessonInformationController extends Controller
         return response()->json([
             'status' => false,
             'message' => 'Validation failed',
-            'errors' => $e->errors()
+            'errors' => $e->getMessage()
         ], 422);
 
     } catch (Exception $e) {
@@ -259,7 +259,7 @@ class PrivateLessonInformationController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->getMessage()
             ], 422);
 
         } catch (Exception $e) {
