@@ -18,8 +18,9 @@ class Consultation extends Model
         'payment_method',
         'stripe_session_id',
         'meet_url',
-        'is_done'
-       
+        'is_done',
+        'currency',
+
     ];
 
      protected $casts = [
@@ -41,6 +42,6 @@ class Consultation extends Model
         return $this->belongsTo(ConsultationInformation::class, 'information_id');
     }
 
-    
+
 
 }

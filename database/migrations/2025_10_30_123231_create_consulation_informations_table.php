@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('consulation_informations', function (Blueprint $table) {
             $table->id();
-            $table->string('type_en')->nullable(); 
-            $table->string('type_ar')->nullable(); 
-            $table->decimal('price', 10, 2)->default(0); 
-            $table->enum('currency', ['USD', 'AED'])->default('USD'); 
+            $table->string('type_en')->nullable();
+            $table->string('type_ar')->nullable();
+            $table->decimal('price_aed', 10, 2)->default(0);
+            $table->decimal('price_usd', 10, 2)->default(0);
             $table->integer('duration');
             $table->timestamps();
         });
