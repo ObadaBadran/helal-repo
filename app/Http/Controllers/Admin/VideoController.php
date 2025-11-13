@@ -227,4 +227,58 @@ class VideoController extends Controller
             ], 500);
         }
     }
+
+    public function show(Request $request, $id)
+    {
+        $user = auth('api')->user();
+        if (!$user) return response()->json(['message' => 'Unauthorized'], 401);
+
+        try {
+            $lang = $request->query('lang', 'en');
+
+            $video = Video::select(
+                'id',
+                'course_id',
+                $lang === 'ar' ? 'title_ar as title' : 'title_en as title',
+                $lang === 'ar' ? 'subTitle_ar as subTitle' : 'subTitle_en as subTitle',
+                $lang === 'ar' ? 'description_ar as description' : 'description_en as description',
+                'path',
+                'youtube_path',
+                'cover',
+                'created_at',
+                'updated_at'
+            )->findOrFail($id);
+
+            $videoData = [
+                'id' => $video->id,
+                'course_id' => $video->course_id,
+                'title' => $video->title,
+                'subTitle' => $video->subTitle,
+                'description' => $video->description,
+                'path' => $video->path ? asset($video->path) : null,
+                'youtube_path' => $video->youtube_path,
+                'cover' => $video->cover ? asset($video->cover) : null,
+                'created_at' => $video->created_at,
+                'updated_at' => $video->updated_at,
+            ];
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Video retrieved successfully',
+                'video' => $videoData
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Video not found'
+            ], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to retrieve video',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
