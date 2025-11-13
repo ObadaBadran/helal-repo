@@ -16,17 +16,18 @@ class AppointmentController extends Controller
      */
     public function index(Request $request)
     {
-        $page = (int)$request->query('page', 1);
-        $perPage = (int)$request->query('per_page', 10);
+        $appointments = Appointment::query();
 
-        $appointments = Appointment::orderBy('id', 'asc')->paginate($perPage, ['*'], 'page', $page);
+        if ($request->has('day'))
+            $appointments = $appointments->whereDay('date', $request->query('day'));
 
-        if ($appointments->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No appointments found.'
-            ], 404);
-        }
+        if ($request->has('month'))
+            $appointments = $appointments->whereMonth('date', $request->query('month'));
+
+        if ($request->has('year'))
+            $appointments = $appointments->whereYear('date', $request->query('year'));
+
+        $appointments = $appointments->latest('date')->get();
 
         $data = $appointments->map(function ($appointment) {
             return [
@@ -39,13 +40,7 @@ class AppointmentController extends Controller
 
         return response()->json([
             'status' => true,
-            'data' => $data,
-            'pagination' => [
-                'current_page' => $appointments->currentPage(),
-                'last_page' => $appointments->lastPage(),
-                'per_page' => $appointments->perPage(),
-                'total' => $appointments->total(),
-            ]
+            'data' => $data
         ], 200);
     }
 }
