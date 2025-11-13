@@ -47,6 +47,7 @@ class ConsultationController extends Controller
                 'date' => 'required|date_format:d-m-Y',
                 'start_time' => 'required|date_format:H:i',
                 //'end_time' => 'required|date_format:H:i|after:start_time',
+                'currency' => 'required|in:USD,AED',
             ]);
 
             $validated['end_time'] = Carbon::createFromFormat('H:i', $validated['start_time'])->addMinutes($consultationInfo->duration)->format('H:i');
@@ -89,15 +90,14 @@ class ConsultationController extends Controller
                 'is_done' => false,
             ]);
 
-            $currency = $consultationInfo->currency ?? 'USD';
-            $amount = $consultationInfo->price ?? ($currency === 'USD' ? 100 : 350);
+            $amount = $validated['currency'] === 'USD' ? $consultationInfo->price_usd : $consultationInfo->price_aed;
 
             Stripe::setApiKey(config('services.stripe.secret'));
             $session = StripeSession::create([
                 'payment_method_types' => ['card'],
                 'line_items' => [[
                     'price_data' => [
-                        'currency' => strtolower($currency),
+                        'currency' => strtolower($validated['currency']),
                         'unit_amount' => intval($amount * 100),
                         'product_data' => [
                             'name' => 'Private Consultation',

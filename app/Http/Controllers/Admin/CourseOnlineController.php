@@ -171,10 +171,12 @@ class CourseOnlineController extends Controller
                 'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
             ]);
 
-            if (isset($data['date'])) {
-                $data['date'] = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
-
+            if (isset($data['date']) || isset($data['start_time']) || isset($data['end_time'])) {
                 $appointment = $course->appointment;
+
+                $data['date'] = isset($validated['date']) ?
+                    Carbon::createFromFormat('d-m-Y', $validated['date'])->format('Y-m-d') :
+                    $appointment->date;
 
                 if (!$this->checkAppointmentConflict($request->date,
                     $request->start_time ?? $appointment->start_time,
@@ -187,6 +189,8 @@ class CourseOnlineController extends Controller
                 }
 
                 $course->appointment->update($data);
+
+                $data['meet_url'] = null;
             }
 
             if ($request->hasFile('cover_image')) {
@@ -380,7 +384,10 @@ class CourseOnlineController extends Controller
                 unlink(public_path($course->cover_image));
             }
 
-            $course->appointment->delete();
+
+            if ($course->appointment) {
+                $course->appointment->delete();
+            }
 
             $course->delete();
 

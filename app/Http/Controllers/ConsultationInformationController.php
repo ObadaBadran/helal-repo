@@ -20,8 +20,9 @@ class ConsultationInformationController extends Controller
                 return [
                     'id' => $info->id,
                     'type' => $lang === 'ar' ? $info->type_ar : $info->type_en,
-                    'price' => $info->price,
-                    'currency' => $info->currency,
+                    'price_usd' => $info->price_usd,
+                    'price_aed' => $info->price_aed,
+                    // 'currency' => $info->currency,
                     'duration' => $info->duration,
                     'created_at' => $info->created_at,
                     'updated_at' => $info->updated_at,
@@ -63,8 +64,9 @@ class ConsultationInformationController extends Controller
                 'data' => [
                     'id' => $info->id,
                     'type' => $lang === 'ar' ? $info->type_ar : $info->type_en,
-                    'price' => $info->price,
-                    'currency' => $info->currency,
+                    'price_usd' => $info->price_usd,
+                    'price_aed' => $info->price_aed,
+                    // 'currency' => $info->currency,
                     'duration' => $info->duration,
                     'created_at' => $info->created_at,
                     'updated_at' => $info->updated_at,
@@ -87,8 +89,9 @@ class ConsultationInformationController extends Controller
             $validated = $request->validate([
                 'type_en' => 'required|string|max:255',
                 'type_ar' => 'required|string|max:255',
-                'price' => 'required|numeric|min:0',
-                'currency' => 'required|in:USD,AED',
+                'price_usd' => 'required|numeric|min:0',
+                'price_aed' => 'required|numeric|min:0',
+                // 'currency' => 'required|in:USD,AED',
                 'duration' => 'required|integer|min:1',
             ]);
 
@@ -132,8 +135,9 @@ class ConsultationInformationController extends Controller
             $validated = $request->validate([
                 'type_en' => 'sometimes|string|max:255',
                 'type_ar' => 'sometimes|string|max:255',
-                'price' => 'sometimes|numeric|min:0',
-                'currency' => 'sometimes|in:USD,AED',
+                'price_usd' => 'sometimes|numeric|min:0',
+                'price_aed' => 'sometimes|numeric|min:0',
+                // 'currency' => 'sometimes|in:USD,AED',
                 'duration' => 'sometimes|integer|min:1',
             ]);
 
@@ -175,7 +179,7 @@ class ConsultationInformationController extends Controller
 
             // التحقق إذا كانت هناك استشارات مرتبطة بهذه المعلومات
             $relatedConsultations = Consultation::where('information_id', $id)->get();
-            
+
             if ($relatedConsultations->count() > 0) {
                 return response()->json([
                     'status' => false,

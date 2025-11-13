@@ -12,10 +12,10 @@ class ConsultationInformation extends Model
      protected $fillable = [
         'type_en',
         'type_ar',
-        'price',
-        'currency',
+         'price_usd',
+         'price_aed',
         'duration',
-        
+
     ];
 
     public function consultation(): HasOne {
