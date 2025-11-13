@@ -120,7 +120,7 @@ class ConsultationInformationController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->getMessage()
             ], 422);
 
         } catch (Exception $e) {
@@ -165,7 +165,7 @@ class ConsultationInformationController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->getMessage()
             ], 422);
 
         } catch (Exception $e) {
