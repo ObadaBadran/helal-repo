@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\Availability;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -34,7 +36,7 @@ class AvailabilityController extends Controller
         try {
             $request->validate([
                 'availabilities' => 'required|array',
-                'availabilities.*.day' => 'required|string|in:Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
+                'availabilities.*.day' => 'required|string|in:Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday,Monday',
                 'availabilities.*.start_time' => 'required|date_format:H:i',
                 'availabilities.*.end_time' => 'required|date_format:H:i|after:availabilities.*.start_time',
             ]);
@@ -95,5 +97,74 @@ class AvailabilityController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getDayIntervals(Request $request)
+    {
+        if (!$request->has('date')) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'error' => 'date parameter is required'
+            ], 422);
+        }
+
+        $date = Carbon::parse($request->date)->format('Y-m-d');
+        $dayName = Carbon::parse($request->date)->format('l');
+
+        $availability = Availability::where('day', $dayName)->first();
+
+        if (!$availability) {
+            return response()->json([
+                'status' => 'success',
+                'message' => "No availability for this day",
+                'data' => [
+                    "day" => $dayName,
+                    "date" => $date,
+                    "available_intervals" => []
+                ]
+            ], 400);
+        }
+
+        $workingStart = Carbon::parse($availability->start_time);
+        $workingEnd = Carbon::parse($availability->end_time);
+
+        $appointments = Appointment::whereDate('date', $date)
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        $intervals = [];
+        $currentStart = $workingStart;
+
+        foreach ($appointments as $app) {
+            $appStart = Carbon::parse($app->start_time);
+            $appEnd = Carbon::parse($app->end_time);
+
+            if ($currentStart < $appStart) {
+                $intervals[] = [
+                    'start' => $currentStart->format('H:i'),
+                    'end' => $appStart->copy()->subMinute()->format('H:i')
+                ];
+            }
+
+            $currentStart = $appEnd->copy()->addMinute();
+        }
+
+        if ($currentStart < $workingEnd) {
+            $intervals[] = [
+                'start' => $currentStart->format('H:i'),
+                'end' => $workingEnd->format('H:i')
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Available intervals retrieved successfully",
+            'data' => [
+                "day" => $dayName,
+                "date" => $date,
+                "available_intervals" => $intervals
+            ]
+        ], 200);
     }
 }

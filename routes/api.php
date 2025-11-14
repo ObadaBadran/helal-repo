@@ -138,6 +138,7 @@ Route::middleware(['auth.api', 'admin'])->group(function () {
 
 Route::middleware(['auth.api'])->group(function () {
     Route::get('availabilities', [AvailabilityController::class, 'index']);
+    Route::get('/available-intervals', [AvailabilityController::class, 'getDayIntervals']);
 });
 
 Route::middleware(['auth.api'])->group(function () {
@@ -169,7 +170,7 @@ Route::delete('admin/private-lessons/{id}', [PrivateLessonController::class, 'de
 
 Route::get('private-lesson-information/{private_lesson_id}', [PrivateLessonInformationController::class, 'index']);
 Route::get('private-lesson-information/show/{id}', [PrivateLessonInformationController::class, 'show']);
-Route::prefix('admin/private-lesson-information')->middleware(['auth.api', 'admin'])->group(function () {    
+Route::prefix('admin/private-lesson-information')->middleware(['auth.api', 'admin'])->group(function () {
     Route::post('/add/{private_lesson_id}', [PrivateLessonInformationController::class, 'store']);
     Route::put('/update/{id}', [PrivateLessonInformationController::class, 'update']);
     Route::delete('delete/{id}', [PrivateLessonInformationController::class, 'destroy']);
