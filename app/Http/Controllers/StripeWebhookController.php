@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendConsultationReminderJob;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Stripe\Exception\SignatureVerificationException;
 use Stripe\Webhook;
 use App\Models\Enroll;
 use App\Models\Consultation;
 use App\Models\Course;
 use App\Models\CourseOnline;
 use Stripe\Stripe;
+use UnexpectedValueException;
 
 class StripeWebhookController extends Controller
 {
@@ -26,10 +29,10 @@ class StripeWebhookController extends Controller
 
         try {
             $event = Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
-        } catch (\UnexpectedValueException $e) {
+        } catch (UnexpectedValueException $e) {
             Log::error('Invalid payload from Stripe', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Invalid payload'], 400);
-        } catch (\Stripe\Exception\SignatureVerificationException $e) {
+        } catch (SignatureVerificationException $e) {
             Log::error('Invalid Stripe signature', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Invalid signature'], 400);
         }
@@ -98,12 +101,15 @@ class StripeWebhookController extends Controller
                         'locale' => app()->getLocale(),
                     ], function ($message) use ($adminEmail) {
                         $message->to($adminEmail)
-                                ->subject(app()->getLocale() === 'ar'
-                                    ? 'طلب استشارة خاصة جديدة'
-                                    : 'New Paid Consultation Request');
+                            ->subject(app()->getLocale() === 'ar'
+                                ? 'طلب استشارة خاصة جديدة'
+                                : 'New Paid Consultation Request');
                     });
 
-                    Log::info('Consultation payment completed.', ['consultation_id' => $consultation->id]);
+                    $sendAt = $consultation->appointment->start_time; // قبل ساعة
+                    SendConsultationReminderJob::dispatch($consultation->id)->delay(now()->addMinute());
+
+                    Log::info('Consultation payment completed.' . $sendAt, ['consultation_id' => $consultation->id]);
                 }
             }
         }
