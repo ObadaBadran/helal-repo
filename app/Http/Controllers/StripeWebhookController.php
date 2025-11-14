@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -78,9 +79,16 @@ class StripeWebhookController extends Controller
             if (isset($session->metadata->consultation_id)) {
                 $consultation = Consultation::find($session->metadata->consultation_id);
                 if ($consultation && $consultation->payment_status !== 'paid') {
+                    $appointment = Appointment::create([
+                        'date' => $session->metadata->date,
+                        'start_time' => $session->metadata->start_time,
+                        'end_time' => $session->metadata->end_time,
+                    ]);
+
                     $consultation->update([
                         'payment_status' => 'paid',
                         'stripe_session_id' => $session->id,
+                        'appointment_id' => $appointment->id,
                     ]);
 
                     $adminEmail = config('services.admin.address');

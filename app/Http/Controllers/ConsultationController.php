@@ -71,18 +71,11 @@ class ConsultationController extends Controller
             // تحويل التاريخ إلى Y-m-d
             $date = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
 
-            // إنشاء الموعد أولاً
-            $appointment = Appointment::create([
-                'date' => $date,
-                'start_time' => $validated['start_time'],
-                'end_time' => $validated['end_time'],
-            ]);
-
-            // إنشاء consultation جديدة وربطها بالموعد
+            // إنشاء consultation جديدة
             $consultation = Consultation::create([
                 'user_id' => $user->id,
                 'information_id' => $information_id,
-                'appointment_id' => $appointment->id,
+                // 'appointment_id' => $appointment->id,
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'phone' => $validated['phone'],
@@ -113,7 +106,10 @@ class ConsultationController extends Controller
                     'consultation_id' => $consultation->id,
                     'user_id' => $user->id,
                     'information_id' => $information_id,
-                    'appointment_id' => $appointment->id,
+                    // 'appointment_id' => $appointment->id,
+                    'date' => $date,
+                    'start_time' => $validated['start_time'],
+                    'end_time' => $validated['end_time'],
                 ],
             ]);
 
@@ -124,7 +120,7 @@ class ConsultationController extends Controller
                 'message' => 'Consultation created and Stripe checkout session generated successfully',
                 'data' => [
                     'consultation' => $consultation,
-                    'appointment' => $appointment,
+                    // 'appointment' => $appointment,
                     'redirect_url' => $session->url,
                     'session_id' => $session->id,
                 ]
