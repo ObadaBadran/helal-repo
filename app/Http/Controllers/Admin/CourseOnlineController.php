@@ -153,79 +153,105 @@ class CourseOnlineController extends Controller
      * تحديث كورس
      */
     public function update(Request $request, $id)
-    {
-        try {
-            $course = CourseOnline::findOrFail($id);
+{
+    try {
+        $course = CourseOnline::findOrFail($id);
 
-            $data = $request->validate([
-                'name_en' => 'sometimes|string|max:255',
-                'description_en' => 'sometimes|string',
-                'name_ar' => 'sometimes|string|max:255',
-                'description_ar' => 'sometimes|string',
-                // 'duration' => 'sometimes|required|integer',
-                'price_aed' => 'sometimes|numeric|min:0',
-                'price_usd' => 'sometimes|numeric|min:0',
-                'date' => 'sometimes|date_format:d-m-Y',
-                'start_time' => 'required_with:end_time|date_format:H:i',
-                'end_time' => 'required_with:start_time|date_format:H:i|after:start_time',
-                'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
-            ]);
+        $data = $request->validate([
+            'name_en' => 'sometimes|string|max:255',
+            'description_en' => 'sometimes|string',
+            'name_ar' => 'sometimes|string|max:255',
+            'description_ar' => 'sometimes|string',
+            'price_aed' => 'sometimes|numeric|min:0',
+            'price_usd' => 'sometimes|numeric|min:0',
+            'date' => 'sometimes|date_format:d-m-Y',
+            'start_time' => 'sometimes|date_format:H:i',
+            'end_time' => 'sometimes|date_format:H:i|after:start_time',
+            'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
+        ]);
 
-            if (isset($data['date']) || isset($data['start_time']) || isset($data['end_time'])) {
-                $appointment = $course->appointment;
-
-                $data['date'] = isset($validated['date']) ?
-                    Carbon::createFromFormat('d-m-Y', $validated['date'])->format('Y-m-d') :
-                    $appointment->date;
-
-                if (!$this->checkAppointmentConflict($request->date,
-                    $request->start_time ?? $appointment->start_time,
-                    $request->end_time ?? $appointment->start_time, $appointment->id)) {
+        // معالجة تحديث الموعد
+        if (isset($data['date']) || isset($data['start_time']) || isset($data['end_time'])) {
+            $appointment = $course->appointment;
+            
+            // تحضير بيانات الموعد للتحديث
+            $appointmentData = [];
+            
+            if (isset($data['date'])) {
+                $appointmentData['date'] = Carbon::createFromFormat('d-m-Y', $data['date'])->format('Y-m-d');
+            }
+            
+            if (isset($data['start_time'])) {
+                $appointmentData['start_time'] = $data['start_time'];
+            }
+            
+            if (isset($data['end_time'])) {
+                $appointmentData['end_time'] = $data['end_time'];
+            }
+            
+            // التحقق من التعارض فقط إذا كان هناك تغيير في الوقت
+            if (!empty($appointmentData)) {
+                $checkDate = $appointmentData['date'] ?? $appointment->date->format('Y-m-d');
+                $checkStartTime = $appointmentData['start_time'] ?? $appointment->start_time;
+                $checkEndTime = $appointmentData['end_time'] ?? $appointment->end_time;
+                
+                if (!$this->checkAppointmentConflict($checkDate, $checkStartTime, $checkEndTime, $appointment->id)) {
                     return response()->json([
                         'status' => false,
                         'message' => 'Failed to update course.',
                         'error' => 'There is another appointment at this time.'
                     ], 400);
                 }
-
-                $course->appointment->update($data);
-
+                
+                // تحديث الموعد
+                $appointment->update($appointmentData);
+                
+                // إعادة تعيين رابط الاجتماع عند تغيير الموعد
                 $data['meet_url'] = null;
             }
-
-            if ($request->hasFile('cover_image')) {
-                // حذف القديمة
-                if ($course->cover_image && file_exists(public_path($course->cover_image))) {
-                    unlink(public_path($course->cover_image));
-                }
-
-                $dir = public_path('course_covers');
-                if (!file_exists($dir)) mkdir($dir, 0777, true);
-
-                $imageName = 'course_' . uniqid() . '.' . $request->file('cover_image')->getClientOriginalExtension();
-                $request->file('cover_image')->move($dir, $imageName);
-                $data['cover_image'] = 'course_covers/' . $imageName;
-            }
-
-            $course->update($data);
-
-            if ($course->cover_image) {
-                $course->cover_image = asset($course->cover_image);
-            }
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Course updated successfully.',
-                'data' => $course
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to update course.',
-                'error' => $e->getMessage()
-            ], 500);
+            
+            // إزالة بيانات الموعد من $data حتى لا يتم تحديثها في جدول الكورس
+            unset($data['date'], $data['start_time'], $data['end_time']);
         }
+
+        // معالجة تحديث الصورة
+        if ($request->hasFile('cover_image')) {
+            // حذف الصورة القديمة
+            if ($course->cover_image && file_exists(public_path($course->cover_image))) {
+                unlink(public_path($course->cover_image));
+            }
+
+            $dir = public_path('course_covers');
+            if (!file_exists($dir)) mkdir($dir, 0777, true);
+
+            $imageName = 'course_' . uniqid() . '.' . $request->file('cover_image')->getClientOriginalExtension();
+            $request->file('cover_image')->move($dir, $imageName);
+            $data['cover_image'] = 'course_covers/' . $imageName;
+        }
+
+        // تحديث بيانات الكورس
+        $course->update($data);
+
+        // تحميل العلاقة المحدثة
+        $course->load('appointment');
+
+        if ($course->cover_image) {
+            $course->cover_image = asset($course->cover_image);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Course updated successfully.',
+            'data' => $course
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to update course.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * عرض الكورسات مع Pagination
