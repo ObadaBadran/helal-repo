@@ -9,50 +9,55 @@ use Exception;
 
 class PrivateLessonController extends Controller
 {
-    // جلب كل الدروس الخصوصية
-   public function index(Request $request)
-{
-    try {
-        $lang = $request->query('lang', 'en');
-        $page = (int)$request->query('page', 1);
-        $perPage = (int)$request->query('per_page', 10);
+    /**
+     * جلب كل الدروس الخصوصية مع Pagination
+     */
+    public function index(Request $request)
+    {
+        try {
+            $lang = $request->query('lang', 'en');
+            $page = (int)$request->query('page', 1);
+            $perPage = (int)$request->query('per_page', 10);
 
-        // استخدام paginate بدلاً من all
-        $lessonsPaginated = PrivateLesson::paginate($perPage, ['*'], 'page', $page);
+            $lessonsPaginated = PrivateLesson::paginate($perPage, ['*'], 'page', $page);
 
-        // تحويل البيانات
-        $data = $lessonsPaginated->map(function ($lesson) use ($lang) {
-            return [
-                'id' => $lesson->id,
-                'title' => $lang === 'ar' ? $lesson->title_ar : $lesson->title_en,
-                'description' => $lang === 'ar' ? $lesson->description_ar : $lesson->description_en,
-                'created_at' => $lesson->created_at,
-                'updated_at' => $lesson->updated_at,
-            ];
-        });
+            $data = $lessonsPaginated->map(function ($lesson) use ($lang) {
+                return [
+                    'id' => $lesson->id,
+                    'title' => $lang === 'ar' ? $lesson->title_ar : $lesson->title_en,
+                    'description' => $lang === 'ar'
+                        ? $lesson->description_ar
+                        : $lesson->description_en,
+                    'cover_image' => $lesson->cover_image ? asset($lesson->cover_image) : null,
+                    'created_at' => $lesson->created_at,
+                    'updated_at' => $lesson->updated_at,
+                ];
+            });
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Private lessons retrieved successfully',
-            'data' => $data,
-            'pagination' => [
-                'current_page' => $lessonsPaginated->currentPage(),
-                'last_page' => $lessonsPaginated->lastPage(),
-                'per_page' => $lessonsPaginated->perPage(),
-                'total' => $lessonsPaginated->total(),
-            ]
-        ], 200);
+            return response()->json([
+                'status' => true,
+                'message' => 'Private lessons retrieved successfully',
+                'data' => $data,
+                'pagination' => [
+                    'current_page' => $lessonsPaginated->currentPage(),
+                    'last_page' => $lessonsPaginated->lastPage(),
+                    'per_page' => $lessonsPaginated->perPage(),
+                    'total' => $lessonsPaginated->total(),
+                ]
+            ]);
 
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Failed to retrieve private lessons',
-            'error' => $e->getMessage()
-        ], 500);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to retrieve private lessons',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-}
 
-    // عرض درس خصوصي محدد
+    /**
+     * عرض درس خصوصي محدد
+     */
     public function show($id)
     {
         try {
@@ -65,19 +70,15 @@ class PrivateLessonController extends Controller
                 ], 404);
             }
 
+            if ($lesson->cover_image) {
+                $lesson->cover_image = asset($lesson->cover_image);
+            }
+
             return response()->json([
                 'status' => true,
                 'message' => 'Private lesson retrieved successfully',
-                'data' => [
-                    'id' => $lesson->id,
-                    'title_en' => $lesson->title_en,
-                    'title_ar' => $lesson->title_ar,
-                    'description_en' => $lesson->description_en,
-                    'description_ar' => $lesson->description_ar,
-                    'created_at' => $lesson->created_at,
-                    'updated_at' => $lesson->updated_at,
-                ]
-            ], 200);
+                'data' => $lesson
+            ]);
 
         } catch (Exception $e) {
             return response()->json([
@@ -88,18 +89,37 @@ class PrivateLessonController extends Controller
         }
     }
 
-    // إنشاء درس خصوصي جديد
+    /**
+     * إنشاء درس خصوصي
+     */
     public function store(Request $request)
     {
         try {
-            $validated = $request->validate([
+            $data = $request->validate([
                 'title_en' => 'required|string|max:255',
                 'title_ar' => 'required|string|max:255',
                 'description_en' => 'nullable|string',
                 'description_ar' => 'nullable|string',
+                'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
             ]);
 
-            $lesson = PrivateLesson::create($validated);
+            if ($request->hasFile('cover_image')) {
+                $dir = public_path('private_covers');
+                if (!file_exists($dir)) mkdir($dir, 0777, true);
+
+                $imageName = 'private_lesson_' . uniqid() . '.' .
+                    $request->file('cover_image')->getClientOriginalExtension();
+
+                $request->file('cover_image')->move($dir, $imageName);
+
+                $data['cover_image'] = 'private_covers/' . $imageName;
+            }
+
+            $lesson = PrivateLesson::create($data);
+
+            if ($lesson->cover_image) {
+                $lesson->cover_image = asset($lesson->cover_image);
+            }
 
             return response()->json([
                 'status' => true,
@@ -111,7 +131,7 @@ class PrivateLessonController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->getMessage()
+                'errors' => $e->errors()
             ], 422);
 
         } catch (Exception $e) {
@@ -123,7 +143,9 @@ class PrivateLessonController extends Controller
         }
     }
 
-    // تحديث درس خصوصي
+    /**
+     * تحديث درس خصوصي
+     */
     public function update(Request $request, $id)
     {
         try {
@@ -136,26 +158,48 @@ class PrivateLessonController extends Controller
                 ], 404);
             }
 
-            $validated = $request->validate([
+            $data = $request->validate([
                 'title_en' => 'sometimes|string|max:255',
                 'title_ar' => 'sometimes|string|max:255',
                 'description_en' => 'nullable|string',
                 'description_ar' => 'nullable|string',
+                'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
             ]);
 
-            $lesson->update($validated);
+            if ($request->hasFile('cover_image')) {
+
+                if ($lesson->cover_image && file_exists(public_path($lesson->cover_image))) {
+                    unlink(public_path($lesson->cover_image));
+                }
+
+                $dir = public_path('private_covers');
+                if (!file_exists($dir)) mkdir($dir, 0777, true);
+
+                $imageName = 'private_lesson_' . uniqid() . '.' .
+                    $request->file('cover_image')->getClientOriginalExtension();
+
+                $request->file('cover_image')->move($dir, $imageName);
+
+                $data['cover_image'] = 'private_covers/' . $imageName;
+            }
+
+            $lesson->update($data);
+
+            if ($lesson->cover_image) {
+                $lesson->cover_image = asset($lesson->cover_image);
+            }
 
             return response()->json([
                 'status' => true,
                 'message' => 'Private lesson updated successfully',
                 'data' => $lesson
-            ], 200);
+            ]);
 
         } catch (ValidationException $e) {
             return response()->json([
                 'status' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->getMessage()
+                'errors' => $e->errors()
             ], 422);
 
         } catch (Exception $e) {
@@ -167,7 +211,9 @@ class PrivateLessonController extends Controller
         }
     }
 
-    // حذف درس خصوصي
+    /**
+     * حذف درس خصوصي
+     */
     public function destroy($id)
     {
         try {
@@ -180,12 +226,16 @@ class PrivateLessonController extends Controller
                 ], 404);
             }
 
+            if ($lesson->cover_image && file_exists(public_path($lesson->cover_image))) {
+                unlink(public_path($lesson->cover_image));
+            }
+
             $lesson->delete();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Private lesson deleted successfully'
-            ], 200);
+            ]);
 
         } catch (Exception $e) {
             return response()->json([

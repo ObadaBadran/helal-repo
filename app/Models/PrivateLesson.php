@@ -11,7 +11,8 @@ class PrivateLesson extends Model
         'title_en',
         'title_ar',
         'description_en',
-        'description_ar'
+        'description_ar',
+        'cover_image'
     ];
 
      public function informations(): HasMany
