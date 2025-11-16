@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('availabilities', function (Blueprint $table) {
             $table->id();
-            $table->enum('day', ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])->unique();
+            $table->enum('day', ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday', 'Monday'])->unique();
             $table->time('start_time');
             $table->time('end_time');
             $table->timestamps();

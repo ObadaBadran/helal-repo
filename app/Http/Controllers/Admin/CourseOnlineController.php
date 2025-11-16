@@ -112,7 +112,7 @@ class CourseOnlineController extends Controller
 
             foreach ($enrolledUsers as $user) {
                 $roomId = basename($course->meet_url);
-                $joinUrl = "http://localhost:5173/Helal-Aljaberi/course/{$roomId}";
+                $joinUrl = config('services.meet_url.web') . $roomId;
 
                 Mail::raw(
                     "Hello {$user->name},\n\nYour online course is ready.\n" .
@@ -173,28 +173,28 @@ class CourseOnlineController extends Controller
         // معالجة تحديث الموعد
         if (isset($data['date']) || isset($data['start_time']) || isset($data['end_time'])) {
             $appointment = $course->appointment;
-            
+
             // تحضير بيانات الموعد للتحديث
             $appointmentData = [];
-            
+
             if (isset($data['date'])) {
                 $appointmentData['date'] = Carbon::createFromFormat('d-m-Y', $data['date'])->format('Y-m-d');
             }
-            
+
             if (isset($data['start_time'])) {
                 $appointmentData['start_time'] = $data['start_time'];
             }
-            
+
             if (isset($data['end_time'])) {
                 $appointmentData['end_time'] = $data['end_time'];
             }
-            
+
             // التحقق من التعارض فقط إذا كان هناك تغيير في الوقت
             if (!empty($appointmentData)) {
                 $checkDate = $appointmentData['date'] ?? $appointment->date->format('Y-m-d');
                 $checkStartTime = $appointmentData['start_time'] ?? $appointment->start_time;
                 $checkEndTime = $appointmentData['end_time'] ?? $appointment->end_time;
-                
+
                 if (!$this->checkAppointmentConflict($checkDate, $checkStartTime, $checkEndTime, $appointment->id)) {
                     return response()->json([
                         'status' => false,
@@ -202,14 +202,14 @@ class CourseOnlineController extends Controller
                         'error' => 'There is another appointment at this time.'
                     ], 400);
                 }
-                
+
                 // تحديث الموعد
                 $appointment->update($appointmentData);
-                
+
                 // إعادة تعيين رابط الاجتماع عند تغيير الموعد
                 $data['meet_url'] = null;
             }
-            
+
             // إزالة بيانات الموعد من $data حتى لا يتم تحديثها في جدول الكورس
             unset($data['date'], $data['start_time'], $data['end_time']);
         }

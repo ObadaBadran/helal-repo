@@ -383,12 +383,10 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
         }
 
         // ✅ الروابط
-        $studentBaseUrl = 'http://localhost:5173/Helal-Aljaberi/meet/';
-        $adminBaseUrl = 'http://localhost:5173/dashboard/live-video/';
         $roomId = str_replace('https://meet.jit.si/', '', $meeting->meet_url);
 
-        $studentJoinUrl = $studentBaseUrl . $roomId;
-        $adminJoinUrl = $adminBaseUrl . $roomId;
+        $studentJoinUrl = config('services.meet_url.web') . $roomId;
+        $adminJoinUrl = config('services.meet_url.dash') . $roomId;
 
         // ✅ إرسال البريد لكل مستخدم عادي (رابط المستخدم فقط)
         foreach ($users as $user) {
