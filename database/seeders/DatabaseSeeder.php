@@ -23,7 +23,8 @@ class DatabaseSeeder extends Seeder
        $this->call([
             CourseSeeder::class,
             VideoSeeder::class,
-            NewsSectionSeeder::class, // إن أردت الاحتفاظ به
+            NewsSectionSeeder::class, 
+            PrivateLessonsSeeder::class// إن أردت الاحتفاظ به
         ]);
     }
 }
