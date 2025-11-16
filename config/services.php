@@ -22,6 +22,11 @@ return [
         'address' => env('MAIL_ADMIN_EMAIL'),
     ],
 
+    'meet_url' => [
+        'web' => env('Web_URL'),
+        'dash' => env('Dash_URL'),
+    ],
+
     'stripe' => [
         'public' => env('STRIPE_PUBLIC'),
         'secret' => env('STRIPE_SECRET'),
@@ -44,11 +49,4 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-
-
-    'frontend' => [
-    'student_meet_url' => env('STUDENT_FRONTEND_BASE_URL', 'http://localhost:5173/Helal-Aljaberi/meet/'),
-    'admin_meet_url' => env('ADMIN_FRONTEND_BASE_URL', 'http://localhost:5173/dashboard/live-video/'),
-],
-
 ];

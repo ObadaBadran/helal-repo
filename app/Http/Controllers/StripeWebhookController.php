@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SendConsultationReminderJob;
 use App\Models\Appointment;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -106,8 +107,14 @@ class StripeWebhookController extends Controller
                                 : 'New Paid Consultation Request');
                     });
 
-                    $sendAt = $consultation->appointment->start_time; // قبل ساعة
-                    SendConsultationReminderJob::dispatch($consultation->id)->delay(now()->addMinute());
+                    $appointmentDate = Carbon::parse($consultation->appointment->date)->format('Y-m-d');
+                    $appointmentTime = Carbon::parse($consultation->appointment->start_time)->format('H:i:s');
+                    $sendAt = Carbon::parse(
+                        $appointmentDate . ' ' . $appointmentTime,
+                        'Asia/Damascus'
+                    );
+                    $sendAt = $sendAt->subHour();
+                    SendConsultationReminderJob::dispatch($consultation->id)->delay($sendAt);
 
                     Log::info('Consultation payment completed.' . $sendAt, ['consultation_id' => $consultation->id]);
                 }
