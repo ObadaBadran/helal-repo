@@ -33,7 +33,7 @@ class SendConsultationReminderJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $consultation = Consultation::find($this->consultationId);
+        $consultation = Consultation::findOrFail($this->consultationId);
 
         $roomName = 'meeting_' . Str::random(10);
         $meetUrl = "https://meet.jit.si/{$roomName}";
