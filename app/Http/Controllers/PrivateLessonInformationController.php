@@ -2,19 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\HandlesAppointmentTimesTrait;
 use App\Models\PrivateLessonInformation;
 use App\Models\PrivateLesson;
-use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Exception;
-use Carbon\Carbon;
 
 class PrivateLessonInformationController extends Controller
 {
-    use HandlesAppointmentTimesTrait;
-
     // جلب كل الدروس الخصوصية
     public function index(Request $request, $private_lesson_id)
     {
@@ -22,6 +17,7 @@ class PrivateLessonInformationController extends Controller
             $lang = $request->query('lang', 'en');
 
             $lessons = PrivateLessonInformation::where('private_lesson_id', $private_lesson_id)
+                ->whereNull('appointment_id')
                 ->with(['lesson', 'appointment'])
                 ->get()
                 ->map(function ($lesson) use ($lang) {
@@ -30,13 +26,7 @@ class PrivateLessonInformationController extends Controller
                         'place' => $lang === 'ar' ? ($lesson->place_ar ?? $lesson->place_en) : $lesson->place_en,
                         'price_aed' => $lesson->price_aed,
                         'price_usd' => $lesson->price_usd,
-                        // 'duration' => $lesson->duration,
-                        'appointment' => $lesson->appointment ? [
-                            'id' => $lesson->appointment->id,
-                            'date' => $lesson->appointment->date,
-                            'start_time' => $lesson->appointment->start_time,
-                            'end_time' => $lesson->appointment->end_time
-                        ] : null,
+                        'duration' => $lesson->duration,
                         'lesson' => $lesson->lesson ? [
                             'id' => $lesson->lesson->id,
                             'title_en' => $lesson->lesson->title_en,
@@ -87,7 +77,7 @@ class PrivateLessonInformationController extends Controller
                     'place' => $lang === 'ar' ? $lesson->place_ar : $lesson->place_en,
                     'price_aed' => $lesson->price_aed,
                     'price_usd' => $lesson->price_usd,
-                    // 'duration' => $lesson->duration,
+                    'duration' => $lesson->duration,
                     'appointment' => $lesson->appointment ? [
                         'id' => $lesson->appointment->id,
                         'date' => $lesson->appointment->date,
@@ -109,82 +99,59 @@ class PrivateLessonInformationController extends Controller
     }
 
     // إنشاء درس خصوصي جديد مع موعد
-   public function store(Request $request, $private_lesson_id)
-{
-    try {
-        $validated = $request->validate([
-            'place_en' => 'required|string|max:255',
-            'place_ar' => 'required|string|max:255',
-            'price_aed' => 'required|numeric|min:0',
-            'price_usd' => 'required|numeric|min:0',
-            // 'duration' => 'required|integer|min:1|max:100',
-            'date' => 'required|date_format:d-m-Y',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
-        ]);
+    public function store(Request $request, $private_lesson_id)
+    {
+        try {
+            $validated = $request->validate([
+                'place_en' => 'required|string|max:255',
+                'place_ar' => 'required|string|max:255',
+                'price_aed' => 'required|numeric|min:0',
+                'price_usd' => 'required|numeric|min:0',
+                'duration' => 'required|integer|min:1',
+            ]);
 
-        // التحقق من وجود private lesson
-        $privateLessonExists = PrivateLesson::where('id', $private_lesson_id)->exists();
-        if (!$privateLessonExists) {
+            // التحقق من وجود private lesson
+            $privateLessonExists = PrivateLesson::where('id', $private_lesson_id)->exists();
+            if (!$privateLessonExists) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Private lesson not found'
+                ], 404);
+            }
+
+            // إنشاء private lesson information وربطها بالموعد
+            $lesson = PrivateLessonInformation::create([
+                'place_en' => $validated['place_en'],
+                'place_ar' => $validated['place_ar'],
+                'price_aed' => $validated['price_aed'],
+                'price_usd' => $validated['price_usd'],
+                'duration' => $validated['duration'],
+                'private_lesson_id' => $private_lesson_id, // من البارامتر
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Private lesson created successfully',
+                'data' => [
+                    'lesson' => $lesson
+                ]
+            ], 201);
+
+        } catch (ValidationException $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Private lesson not found'
-            ], 404);
-        }
+                'message' => 'Validation failed',
+                'errors' => $e->getMessage()
+            ], 422);
 
-        if (!$this->checkAppointmentConflict($request->date, $request->start_time, $request->end_time)) {
+        } catch (Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to create private lesson.',
-                'error' => 'There is another appointment at this time.'
-            ], 400);
+                'message' => 'Failed to create private lesson',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // تحويل التاريخ إلى Y-m-d
-        $date = Carbon::createFromFormat('d-m-Y', $request->date)->format('Y-m-d');
-
-        // إنشاء الموعد أولاً
-        $appointment = Appointment::create([
-            'date' => $date,
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
-        ]);
-
-        // إنشاء private lesson information وربطها بالموعد
-        $lesson = PrivateLessonInformation::create([
-            'place_en' => $validated['place_en'],
-            'place_ar' => $validated['place_ar'],
-            'price_aed' => $validated['price_aed'],
-            'price_usd' => $validated['price_usd'],
-            // 'duration' => $validated['duration'],
-            'private_lesson_id' => $private_lesson_id, // من البارامتر
-            'appointment_id' => $appointment->id,
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Private lesson created successfully',
-            'data' => [
-                'lesson' => $lesson,
-                'appointment' => $appointment
-            ]
-        ], 201);
-
-    } catch (ValidationException $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Validation failed',
-            'errors' => $e->getMessage()
-        ], 422);
-
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Failed to create private lesson',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     // تحديث درس خصوصي مع الموعد
     public function update(Request $request, $id)
@@ -199,43 +166,20 @@ class PrivateLessonInformationController extends Controller
                 ], 404);
             }
 
+            if ($lesson->appointment) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The private lesson is enrolled'
+                ], 404);
+            }
+
             $validated = $request->validate([
                 'place_en' => 'required|string|max:255',
                 'place_ar' => 'required|string|max:255',
                 'price_aed' => 'required|numeric|min:0',
                 'price_usd' => 'required|numeric|min:0',
-                // 'duration' => 'required|integer|min:1|max:100',
-                'date' => 'sometimes|date_format:d-m-Y',
-                'start_time' => 'required_with:end_time|date_format:H:i',
-                'end_time' => 'required_with:start_time|date_format:H:i|after:start_time',
+                'duration' => 'required|integer|min:1',
             ]);
-
-            // تحديث بيانات الموعد إذا تم تقديمها
-            if (isset($validated['date']) || isset($validated['start_time']) || isset($validated['end_time'])) {
-                $appointment = $lesson->appointment;
-
-                $date = isset($validated['date']) ?
-                    Carbon::createFromFormat('d-m-Y', $validated['date'])->format('Y-m-d') :
-                    $appointment->date;
-
-                $start_time = $validated['start_time'] ?? $appointment->start_time;
-                $end_time = $validated['end_time'] ?? $appointment->end_time;
-
-                if (!$this->checkAppointmentConflict($request->date, $start_time, $end_time, $appointment->id)) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Failed to update private lesson.',
-                        'error' => 'There is another appointment at this time.'
-                    ], 400);
-                }
-
-                // تحديث الموعد
-                $lesson->appointment->update([
-                    'date' => $date,
-                    'start_time' => $start_time,
-                    'end_time' => $end_time,
-                ]);
-            }
 
             // تحديث بيانات الدرس
             $lesson->update([
@@ -243,15 +187,14 @@ class PrivateLessonInformationController extends Controller
                 'place_ar' => $validated['place_ar'],
                 'price_aed' => $validated['price_aed'],
                 'price_usd' => $validated['price_usd'],
-                // 'duration' => $validated['duration'],
+                'duration' => $validated['duration'],
             ]);
 
             return response()->json([
                 'status' => true,
                 'message' => 'Private lesson updated successfully',
                 'data' => [
-                    'lesson' => $lesson,
-                    'appointment' => $lesson->appointment
+                    'lesson' => $lesson
                 ]
             ], 200);
 
@@ -284,9 +227,11 @@ class PrivateLessonInformationController extends Controller
                 ], 404);
             }
 
-            // حذف الموعد المرتبط أولاً
             if ($lesson->appointment) {
-                $lesson->appointment->delete();
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The private lesson is enrolled'
+                ], 404);
             }
 
             $lesson->delete();
