@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SendConsultationReminderJob;
+use App\Jobs\SendPrivateLessonReminderJob;
 use App\Models\Appointment;
+use App\Models\PrivateLessonInformation;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -74,6 +76,46 @@ class StripeWebhookController extends Controller
                                 'enrollment_id' => $enrollment->id,
                                 'course_online_id' => $courseOnline->id
                             ]);
+                        }
+                    }
+
+                    // === Private Lesson ===
+                    if (isset($session->metadata->private_information_id)) {
+                        $privateLessonInformation = PrivateLessonInformation::with('lesson')->findOrFail($session->metadata->private_information_id);
+                        if ($privateLessonInformation) {
+
+                            $appointment = Appointment::create([
+                                'date' => $session->metadata->date,
+                                'start_time' => $session->metadata->start_time,
+                                'end_time' => $session->metadata->end_time,
+                            ]);
+
+                            $privateLessonInformation->update([
+                                'appointment_id' => $appointment->id,
+                            ]);
+
+                            $adminEmail = config('services.admin.address');
+
+                            Mail::send('emails.private_lesson', [
+                                'user' => $enrollment->user,
+                                'enrollment' => $enrollment,
+                                'appointment' => $appointment,
+                                'locale' => app()->getLocale(),
+                            ], function ($message) use ($adminEmail) {
+                                $message->to($adminEmail)
+                                    ->subject(app()->getLocale() === 'ar'
+                                        ? 'طلب درس خاص جديدة'
+                                        : 'New Paid Private Lesson Request');
+                            });
+
+                            $appointmentDate = Carbon::parse($privateLessonInformation->appointment->date)->format('Y-m-d');
+                            $sendAt = Carbon::parse(
+                                $appointmentDate . " 00:00:00",
+                                'Asia/Damascus'
+                            );
+                            SendPrivateLessonReminderJob::dispatch($privateLessonInformation->id)->delay($sendAt);
+
+                            Log::info('private lesson payment completed.' . $sendAt, ['private_information_id' => $privateLessonInformation->id]);
                         }
                     }
                 }

@@ -112,9 +112,10 @@ class EnrollController extends Controller
                 ], 404);
             }
 
-            $validatedData['end_time'] = Carbon::createFromFormat('H:i', $validatedData['start_time'])->addMinutes($privateLessonInformation->duration)->format('H:i');
+            $start_time = $validatedData['start_time'];
+            $end_time = Carbon::createFromFormat('H:i', $start_time)->addMinutes($privateLessonInformation->duration)->format('H:i');
 
-            if (!$this->checkAvailabilityForDay($request->date, $validatedData['start_time'], $validatedData['end_time'])) {
+            if (!$this->checkAvailabilityForDay($request->date, $start_time, $end_time)) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Failed to create consultation and Stripe checkout session.',
@@ -122,7 +123,7 @@ class EnrollController extends Controller
                 ], 400);
             }
 
-            if (!$this->checkAppointmentConflict($request->date, $validatedData['start_time'], $validatedData['end_time'])) {
+            if (!$this->checkAppointmentConflict($request->date, $start_time, $end_time)) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Failed to create consultation and Stripe checkout session.',
@@ -132,16 +133,6 @@ class EnrollController extends Controller
 
             // تحويل التاريخ إلى Y-m-d
             $date = Carbon::createFromFormat('d-m-Y', $validatedData['date'])->format('Y-m-d');
-
-            $appointment = Appointment::create([
-                'date' => $date,
-                'start_time' => $validatedData['start_time'],
-                'end_time' => $validatedData['end_time'],
-            ]);
-
-            $privateLessonInformation->update([
-                'appointment_id' => $appointment->id
-            ]);
 
             $amount = $currency === 'usd' ? $privateLessonInformation->price_usd : $privateLessonInformation->price_aed;
             $productName = "Private Lesson - " . ($privateLessonInformation->lesson->title_en ?? 'Lesson');
@@ -186,6 +177,9 @@ class EnrollController extends Controller
                 'course_id' => $request->course_id,
                 'course_online_id' => $request->course_online_id,
                 'private_information_id' => $request->private_information_id,
+                'date' => $date,
+                'start_time' => $start_time,
+                'end_time' => $end_time,
             ],
         ]);
 
