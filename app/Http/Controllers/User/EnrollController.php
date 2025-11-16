@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\User;
 
+use App\HandlesAppointmentTimesTrait;
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\Course;
 use App\Models\CourseOnline;
 use App\Models\Enroll;
 use App\Models\PrivateLessonInformation;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -22,131 +25,179 @@ use function PHPUnit\Framework\returnSelf;
 
 class EnrollController extends Controller
 {
+    use HandlesAppointmentTimesTrait;
 
     public function enrollCourse(Request $request)
-{
-    $user = auth('api')->user();
-    if (!$user) {
-        return response()->json(['message' => 'Unauthorized'], 401);
-    }
+    {
+        $user = auth('api')->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
 
-    try {
-        $validatedData = $request->validate([
-            'course_id' => 'nullable|integer|exists:courses,id',
-            'course_online_id' => 'nullable|integer|exists:course_online,id',
-            'private_information_id' => 'nullable|integer|exists:private_lesson_informations,id',
-            'currency' => 'nullable|string',
-            'return_url' => 'required|url',
-            'cancel_url' => 'required|url',
+        try {
+            $rule = [
+                'course_id' => 'nullable|integer|exists:courses,id',
+                'course_online_id' => 'nullable|integer|exists:course_online,id',
+                'private_information_id' => 'nullable|integer|exists:private_lesson_informations,id',
+                'currency' => 'nullable|string',
+                'return_url' => 'required|url',
+                'cancel_url' => 'required|url',
+            ];
+
+
+            if ($request->filled('private_information_id')) {
+                $rule['date'] = 'required|date_format:d-m-Y';
+                $rule['start_time'] = 'required|date_format:H:i';
+            }
+
+            $validatedData = $request->validate($rule);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $e->getMessage()
+            ], 422);
+        }
+
+        // التحقق من وجود نوع واحد على الأقل
+        $courseTypes = array_filter([
+            'course' => $request->course_id,
+            'online_course' => $request->course_online_id,
+            'private_lesson' => $request->private_information_id
         ]);
-    } catch (ValidationException $e) {
-        return response()->json([
-            'status' => 'error',
-            'errors' => $e->getMessage()
-        ], 422);
-    }
 
-    // التحقق من وجود نوع واحد على الأقل
-    $courseTypes = array_filter([
-        'course' => $request->course_id,
-        'online_course' => $request->course_online_id,
-        'private_lesson' => $request->private_information_id
-    ]);
+        if (count($courseTypes) === 0) {
+            return response()->json(['status' => 'error', 'message' => 'Course type missing'], 422);
+        }
 
-    if (count($courseTypes) === 0) {
-        return response()->json(['status' => 'error', 'message' => 'Course type missing'], 422);
-    }
+        if (count($courseTypes) > 1) {
+            return response()->json(['status' => 'error', 'message' => 'Only one course type allowed'], 422);
+        }
 
-    if (count($courseTypes) > 1) {
-        return response()->json(['status' => 'error', 'message' => 'Only one course type allowed'], 422);
-    }
+        $currency = $validatedData['currency'] ?? 'usd';
 
-    $currency = $validatedData['currency'] ?? 'usd';
+        // تحقق إن كان مسجل سابقًا
+        $existingEnrollment = Enroll::where('user_id', $user->id)
+            ->when($request->course_id, fn($q) => $q->where('course_id', $request->course_id))
+            ->when($request->course_online_id, fn($q) => $q->where('course_online_id', $request->course_online_id))
+            ->when($request->private_information_id, fn($q) => $q->where('private_information_id', $request->private_information_id))
+            ->where('payment_status', 'paid')
+            ->exists();
 
-    if ($request->course_id) {
-        // === كورس عادي ===
-        $course = Course::findOrFail($validatedData['course_id']);
-        $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
-        $productName = "Course: " . $course->title_en;
-        $type = 'course';
+        if ($existingEnrollment) {
+            return response()->json(['status' => 'info', 'message' => 'Already enrolled'], 409);
+        }
 
-    } elseif ($request->course_online_id) {
-        // === كورس أونلاين ===
-        $course = CourseOnline::findOrFail($validatedData['course_online_id']);
-        $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
-        $productName = "Online Course: " . $course->name;
-        $type = 'online_course';
+        if ($request->course_id) {
+            // === كورس عادي ===
+            $course = Course::findOrFail($validatedData['course_id']);
+            $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
+            $productName = "Course: " . $course->title_en;
+            $type = 'course';
 
-    } else {
-        // === Private Lesson ===
-        $privateLesson = PrivateLessonInformation::with('lesson')->findOrFail($validatedData['private_information_id']);
-        $amount = $currency === 'usd' ? $privateLesson->price_usd : $privateLesson->price_aed;
-        $productName = "Private Lesson - " . ($privateLesson->lesson->title_en ?? 'Lesson');
-        $type = 'private_lesson';
-    }
+        } elseif ($request->course_online_id) {
+            // === كورس أونلاين ===
+            $course = CourseOnline::findOrFail($validatedData['course_online_id']);
+            $amount = $currency === 'usd' ? $course->price_usd : $course->price_aed;
+            $productName = "Online Course: " . $course->name;
+            $type = 'online_course';
 
-    // تحقق إن كان مسجل سابقًا
-    $existingEnrollment = Enroll::where('user_id', $user->id)
-        ->when($request->course_id, fn($q) => $q->where('course_id', $request->course_id))
-        ->when($request->course_online_id, fn($q) => $q->where('course_online_id', $request->course_online_id))
-        ->when($request->private_information_id, fn($q) => $q->where('private_information_id', $request->private_information_id))
-        ->where('payment_status', 'paid')
-        ->exists();
+        } else {
+            // === Private Lesson ===
+            $privateLessonInformation = PrivateLessonInformation::with('lesson')->findOrFail($validatedData['private_information_id']);
 
-    if ($existingEnrollment) {
-        return response()->json(['status' => 'info', 'message' => 'Already enrolled'], 409);
-    }
+            if ($privateLessonInformation->appointment) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The private lesson is enrolled'
+                ], 404);
+            }
 
-    $enrollment = Enroll::create([
-        'course_id' => $request->course_id,
-        'course_online_id' => $request->course_online_id,
-        'private_information_id' => $request->private_information_id,
-        'user_id' => $user->id,
-        'payment_status' => 'pending',
-        'payment_method' => 'Stripe',
-        'amount' => $amount,
-        'currency' => strtoupper($currency),
-        'is_enroll' => false,
-    ]);
+            $validatedData['end_time'] = Carbon::createFromFormat('H:i', $validatedData['start_time'])->addMinutes($privateLessonInformation->duration)->format('H:i');
 
-    Stripe::setApiKey(config('services.stripe.secret'));
+            if (!$this->checkAvailabilityForDay($request->date, $validatedData['start_time'], $validatedData['end_time'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to create consultation and Stripe checkout session.',
+                    'error' => 'The appointment is outside the availability range.'
+                ], 400);
+            }
 
-    $session = StripeSession::create([
-        'payment_method_types' => ['card'],
-        'line_items' => [[
-            'price_data' => [
-                'currency' => strtolower($currency),
-                'unit_amount' => intval($amount * 100),
-                'product_data' => [
-                    'name' => $productName,
-                    'description' => $type === 'private_lesson' ?
-                        'Duration: ' . $privateLesson->duration . ' minutes' :
-                        ($course->description_en ?? ''),
-                ],
-            ],
-            'quantity' => 1,
-        ]],
-        'mode' => 'payment',
-        'success_url' => $validatedData['return_url'] . '?order_id=' . $enrollment->id,
-        'cancel_url' => $validatedData['cancel_url'],
-        'metadata' => [
-            'order_id' => $enrollment->id,
-            'user_id' => $user->id,
+            if (!$this->checkAppointmentConflict($request->date, $validatedData['start_time'], $validatedData['end_time'])) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to create consultation and Stripe checkout session.',
+                    'error' => 'There is another appointment at this time.'
+                ], 400);
+            }
+
+            // تحويل التاريخ إلى Y-m-d
+            $date = Carbon::createFromFormat('d-m-Y', $validatedData['date'])->format('Y-m-d');
+
+            $appointment = Appointment::create([
+                'date' => $date,
+                'start_time' => $validatedData['start_time'],
+                'end_time' => $validatedData['end_time'],
+            ]);
+
+            $privateLessonInformation->update([
+                'appointment_id' => $appointment->id
+            ]);
+
+            $amount = $currency === 'usd' ? $privateLessonInformation->price_usd : $privateLessonInformation->price_aed;
+            $productName = "Private Lesson - " . ($privateLessonInformation->lesson->title_en ?? 'Lesson');
+            $type = 'private_lesson';
+        }
+
+        $enrollment = Enroll::create([
             'course_id' => $request->course_id,
             'course_online_id' => $request->course_online_id,
             'private_information_id' => $request->private_information_id,
-        ],
-    ]);
+            'user_id' => $user->id,
+            'payment_status' => 'pending',
+            'payment_method' => 'Stripe',
+            'amount' => $amount,
+            'currency' => strtoupper($currency),
+            'is_enroll' => false,
+        ]);
 
-    $enrollment->update(['stripe_session_id' => $session->id]);
+        Stripe::setApiKey(config('services.stripe.secret'));
 
-    return response()->json([
-        'status' => 'redirect',
-        'redirect_url' => $session->url,
-        'session_id' => $session->id,
-        'order_id' => $enrollment->id,
-    ]);
-}
+        $session = StripeSession::create([
+            'payment_method_types' => ['card'],
+            'line_items' => [[
+                'price_data' => [
+                    'currency' => strtolower($currency),
+                    'unit_amount' => intval($amount * 100),
+                    'product_data' => [
+                        'name' => $productName,
+                        'description' => $type === 'private_lesson' ?
+                            'Duration: ' . $privateLessonInformation->duration . ' minutes' :
+                            ($course->description_en ?? ''),
+                    ],
+                ],
+                'quantity' => 1,
+            ]],
+            'mode' => 'payment',
+            'success_url' => $validatedData['return_url'] . '?order_id=' . $enrollment->id,
+            'cancel_url' => $validatedData['cancel_url'],
+            'metadata' => [
+                'order_id' => $enrollment->id,
+                'user_id' => $user->id,
+                'course_id' => $request->course_id,
+                'course_online_id' => $request->course_online_id,
+                'private_information_id' => $request->private_information_id,
+            ],
+        ]);
+
+        $enrollment->update(['stripe_session_id' => $session->id]);
+
+        return response()->json([
+            'status' => 'redirect',
+            'redirect_url' => $session->url,
+            'session_id' => $session->id,
+            'order_id' => $enrollment->id,
+        ]);
+    }
 
     public function showEnrollCourses(Request $request)
     {
@@ -164,9 +215,9 @@ class EnrollController extends Controller
             ->whereNotNull('course_id')
             ->where('payment_status', 'paid')
             ->orderBy('created_at', 'desc')
-        ->get();
+            ->get();
 
-        $data = $enrolls->map(function($enroll) use ($lang) {
+        $data = $enrolls->map(function ($enroll) use ($lang) {
             $course = $enroll->course;
 
             return [

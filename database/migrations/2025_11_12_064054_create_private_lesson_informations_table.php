@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('private_lesson_informations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('appointment_id')->constrained('appointments')->onDelete('cascade');
+            $table->foreignId('appointment_id')->nullable()->constrained('appointments')->onDelete('cascade');
             $table->foreignId('private_lesson_id')->constrained('private_lessons')->onDelete('cascade');
             $table->string('place_ar');
             $table->string('place_en');
             $table->decimal('price_aed', 10, 2)->default(0);
             $table->decimal('price_usd', 10, 2)->default(0);
-            // $table->integer('duration');
+            $table->integer('duration');
             $table->timestamps();
         });
     }

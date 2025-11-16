@@ -162,7 +162,7 @@ Route::get('/private-lessons/{id}', [PrivateLessonController::class, 'show']);
 
 Route::middleware(['auth.api', 'admin'])->group(function () {
 Route::post('admin/private-lessons', [PrivateLessonController::class, 'store']);
-Route::put('admin/private-lessons/{id}', [PrivateLessonController::class, 'update']);
+Route::post('admin/private-lessons/{id}', [PrivateLessonController::class, 'update']);
 Route::delete('admin/private-lessons/{id}', [PrivateLessonController::class, 'destroy']);
 });
 
