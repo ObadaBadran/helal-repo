@@ -186,7 +186,7 @@ class AuthController extends Controller
         $user->otp_verified = true;
         $user->save();
 
-        $otpRecord->delete();
+      //  $otpRecord->delete();
 
         return response()->json(['status' => 'success', 'message' => 'OTP verified successfully.']);
     }
