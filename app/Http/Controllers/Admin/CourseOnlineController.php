@@ -318,8 +318,7 @@ class CourseOnlineController extends Controller
             $course = $enroll->courseOnline;
             if (!$course) return null;
 
-            $roomId = basename($course->meet_url);
-            $joinUrl = config('services.meet_url.web') . $roomId;
+            $joinUrl = $course->meet_url ? config('services.meet_url.web') . basename($course->meet_url) : null;
 
             return [
                 'enroll_id' => $enroll->id,
