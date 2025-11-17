@@ -23,9 +23,9 @@ class DatabaseSeeder extends Seeder
        $this->call([
             CourseSeeder::class,
             VideoSeeder::class,
-            NewsSectionSeeder::class, 
+            NewsSectionSeeder::class,
             PrivateLessonsSeeder::class,
-            ConsultationInformation::class// إن أردت الاحتفاظ به
+            ConsultationInformationSeeder::class// إن أردت الاحتفاظ به
         ]);
     }
 }
