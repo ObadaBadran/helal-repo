@@ -24,7 +24,8 @@ class DatabaseSeeder extends Seeder
             CourseSeeder::class,
             VideoSeeder::class,
             NewsSectionSeeder::class, 
-            PrivateLessonsSeeder::class// إن أردت الاحتفاظ به
+            PrivateLessonsSeeder::class,
+            ConsultationInformation::class// إن أردت الاحتفاظ به
         ]);
     }
 }
