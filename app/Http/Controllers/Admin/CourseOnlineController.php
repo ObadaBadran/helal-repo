@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\HandlesAppointmentTimesTrait;
 use App\Http\Controllers\Controller;
+use App\Mail\CourseReadyMail;
 use App\Models\Appointment;
 use App\Models\Enroll;
 use Illuminate\Http\Request;
@@ -114,20 +115,7 @@ class CourseOnlineController extends Controller
                 $roomId = basename($course->meet_url);
                 $joinUrl = config('services.meet_url.web') . $roomId;
 
-                Mail::raw(
-                    "Hello {$user->name},\n\nYour online course is ready.\n" .
-                    "Course: {$course->name_en}\n" .
-                    "Date: {$course->appointment->date}\n" .
-                    "Start time: {$course->appointment->start_time}\n" .
-                    "End time: {$course->appointment->end_time}\n" .
-                    // "Duration: {$course->duration} minutes\n" .
-                    "Price: {$course->price_usd} USD, {$course->price_aed} AED\n" .
-                    "Join via: {$joinUrl}\n",
-                    function ($message) use ($user, $course) {
-                        $message->to($user->email)
-                            ->subject("Online Course Ready: {$course->name_en}");
-                    }
-                );
+                Mail::to($user->email)->send(new CourseReadyMail($user, $course, $joinUrl));
             }
 
             if ($course->cover_image) {
