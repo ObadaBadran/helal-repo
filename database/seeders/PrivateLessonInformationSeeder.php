@@ -14,7 +14,7 @@ class PrivateLessonInformationSeeder extends Seeder
      */
     public function run(): void
     {
-        
+
         $requiredIds = [1, 2, 3, 4];
 
         $existingIds = PrivateLesson::whereIn('id', $requiredIds)->pluck('id')->toArray();
@@ -26,23 +26,23 @@ class PrivateLessonInformationSeeder extends Seeder
         }
 
         // إنشاء أو الحصول على Appointment
-        $appointment = Appointment::first() ?? Appointment::create([
+        /*$appointment = Appointment::first() ?? Appointment::create([
             'date' => now()->toDateString(),
             'start_time' => '10:00',
             'end_time' => '11:00',
         ]);
 
-        $appointmentId = $appointment->id;
+        $appointmentId = $appointment->id;*/
 
         $privateLessonInformations = [
-           
+
             [
                 'private_lesson_id' => 1,
                 'place_en' => 'Online Session - Zoom',
                 'place_ar' => 'جلسة أونلاين - زوم',
                 'price_aed' => 300,
                 'price_usd' => 82,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
             [
                 'private_lesson_id' => 1,
@@ -50,7 +50,7 @@ class PrivateLessonInformationSeeder extends Seeder
                 'place_ar' => 'حضوري - مكتب دبي',
                 'price_aed' => 400,
                 'price_usd' => 109,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
             [
                 'private_lesson_id' => 1,
@@ -58,17 +58,17 @@ class PrivateLessonInformationSeeder extends Seeder
                 'place_ar' => 'باقة مميزة - 4 جلسات',
                 'price_aed' => 1200,
                 'price_usd' => 327,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
 
-           
+
             [
                 'private_lesson_id' => 2,
                 'place_en' => 'Online Session - Google Meet',
                 'place_ar' => 'جلسة أونلاين - جوجل ميت',
                 'price_aed' => 350,
                 'price_usd' => 95,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
             [
                 'private_lesson_id' => 2,
@@ -76,7 +76,7 @@ class PrivateLessonInformationSeeder extends Seeder
                 'place_ar' => 'حضوري - أبوظبي',
                 'price_aed' => 450,
                 'price_usd' => 123,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
             [
                 'private_lesson_id' => 2,
@@ -84,17 +84,17 @@ class PrivateLessonInformationSeeder extends Seeder
                 'place_ar' => 'معسكر تداول العملات الرقمية',
                 'price_aed' => 800,
                 'price_usd' => 218,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
 
-           
+
             [
                 'private_lesson_id' => 3,
                 'place_en' => 'Online Session - Microsoft Teams',
                 'place_ar' => 'جلسة أونلاين - مايكروسوفت تيمز',
                 'price_aed' => 320,
                 'price_usd' => 87,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
             [
                 'private_lesson_id' => 3,
@@ -102,7 +102,7 @@ class PrivateLessonInformationSeeder extends Seeder
                 'place_ar' => 'حضوري - الشارقة',
                 'price_aed' => 420,
                 'price_usd' => 114,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
             [
                 'private_lesson_id' => 3,
@@ -110,7 +110,7 @@ class PrivateLessonInformationSeeder extends Seeder
                 'place_ar' => 'جلسة أونلاين - منصة مخصصة',
                 'price_aed' => 380,
                 'price_usd' => 104,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
             [
                 'private_lesson_id' => 3,
@@ -118,7 +118,7 @@ class PrivateLessonInformationSeeder extends Seeder
                 'place_ar' => 'ورشة مكثفة - 3 جلسات',
                 'price_aed' => 1000,
                 'price_usd' => 272,
-                'appointment_id' => $appointmentId,
+                'duration' => 60,
             ],
         ];
 
