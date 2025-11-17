@@ -26,7 +26,8 @@ class DatabaseSeeder extends Seeder
             NewsSectionSeeder::class,
             PrivateLessonsSeeder::class,
             ConsultationInformationSeeder::class,
-            CourseOnlineSeeder::class
+            CourseOnlineSeeder::class,
+            PrivateLessonInformationSeeder::class
         ]);
     }
 }

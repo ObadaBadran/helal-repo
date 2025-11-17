@@ -12,8 +12,8 @@ class PrivateLessonsSeeder extends Seeder
      */
     public function run(): void
     {
-        // أولاً، احذف السجلات القديمة إذا كنت تريد إعادة البداية
-        PrivateLesson::query()->delete();
+       
+       // PrivateLesson::query()->delete();
 
         // مصفوفة من الدروس
         $lessons = [
