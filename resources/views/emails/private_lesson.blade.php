@@ -95,7 +95,7 @@
     <p class="dual-text"><span class="label">البريد الإلكتروني (Email):</span> <span class="value">{{ $user->email }}</span></p>
     <p class="dual-text"><span class="label">رقم الهاتف (Phone):</span> <span class="value">{{ $user->phone_number }}</span></p>
     <p class="dual-text"><span class="label">المبلغ (Amount):</span> <span class="value">{{ $enrollment->currency === 'USD' ? $enrollment->amount . 'USD' : $enrollment->amount . 'AED'}}</span></p>
-    <p class="dual-text"><span class="label">التاريخ (Date):</span> <span class="value">{{ $appointment->date}}</span></p>
+    <p class="dual-text"><span class="label">التاريخ (Date):</span> <span class="value">{{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('l, d F Y') }}</span></p>
     <p class="dual-text"><span class="label">الوقت (Time):</span> <span class="value">{{ $appointment->start_time}}</span></p>
     <p class="dual-text"><span class="label">وقت الانتهاء (End Time):</span> <span class="value">{{ $appointment->end_time}}</span></p>
 

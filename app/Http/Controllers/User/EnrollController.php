@@ -177,9 +177,9 @@ class EnrollController extends Controller
                 'course_id' => $request->course_id,
                 'course_online_id' => $request->course_online_id,
                 'private_information_id' => $request->private_information_id,
-                'date' => $date,
-                'start_time' => $start_time,
-                'end_time' => $end_time,
+                'date' => $request->private_information_id ? $date : null,
+                'start_time' => $request->private_information_id ? $start_time : null,
+                'end_time' => $request->private_information_id ? $end_time : null,
             ],
         ]);
 
