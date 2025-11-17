@@ -22,7 +22,7 @@ class NewCourseMail extends Mailable
         $this->course = $course;
         $this->user = $user;
 
-        $this->courseUrl = $courseUrl ?? env('FRONTEND_URL') . '/courses/' . $course->id;
+        $this->courseUrl = $courseUrl;
     }
 
     /**
