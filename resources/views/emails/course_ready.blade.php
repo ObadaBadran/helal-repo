@@ -44,13 +44,6 @@
                     {{ $course->price_usd }} USD - {{ $course->price_aed }} AED
                 </p>
 
-                <hr style="border:0; border-top:1px solid #ddd;">
-
-                <p>
-                    <strong>🔗 Join via:</strong><br>
-                    <a href="{{ $joinUrl }}" style="color:#3182ce; word-break:break-word;">{{ $joinUrl }}</a>
-                </p>
-
             </div>
         </td>
     </tr>

@@ -318,6 +318,9 @@ class CourseOnlineController extends Controller
             $course = $enroll->courseOnline;
             if (!$course) return null;
 
+            $roomId = basename($course->meet_url);
+            $joinUrl = config('services.meet_url.web') . $roomId;
+
             return [
                 'enroll_id' => $enroll->id,
                 'course_id' => $course->id,
@@ -328,7 +331,7 @@ class CourseOnlineController extends Controller
                 'price_usd' => $course->price_usd,
                 // 'date' => $course->date,
                 'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
-                'meet_url' => $course->meet_url,
+                'meet_url' => $joinUrl,
                 'appointment' => $course->appointment,
             ];
         })->filter();
