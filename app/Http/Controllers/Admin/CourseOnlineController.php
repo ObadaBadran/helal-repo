@@ -250,8 +250,17 @@ class CourseOnlineController extends Controller
             $lang = $request->query('lang', 'en');
             $page = (int)$request->query('page', 1);
             $perPage = (int)$request->query('per_page', 10);
+            $active = (bool)$request->query('active', false);
 
-            $courses = CourseOnline::orderBy('id', 'asc')->paginate($perPage, ['*'], 'page', $page);
+            $courses = CourseOnline::with('appointment');
+
+            if($active === true)
+                $courses = $courses->whereHas('appointment', function ($query) {
+                        $query->where('date', '>', Carbon::now()->format('Y-m-d'));
+                    });
+
+            $courses = $courses->orderBy('id', 'asc')
+                ->paginate($perPage, ['*'], 'page', $page);
 
             if ($courses->isEmpty()) {
                 return response()->json([
