@@ -172,9 +172,6 @@
 
     <div class="reminder-header">
         <h2>تذكير بموعد درس خاص قريب / <span style="color:#fff;">Upcoming Private Lesson Reminder</span></h2>
-        @if($startDateTime)
-            <div class="reminder-time">1 hours ago</div>
-        @endif
     </div>
 
     @if(!empty($isUrgent))
@@ -209,18 +206,12 @@
             <h3 style="color: #28a745; margin-top: 0;">تفاصيل الموعد / Appointment Details</h3>
             <p class="dual-text">
                 <span class="label">التاريخ (Date):</span>
-                <span class="value">{{ Carbon::parse($appointment->date)->translatedFormat('l, d F Y') }}</span>
+                <span class="value">{{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('l, d F Y') }}</span>
             </p>
             <p class="dual-text"><span class="label">وقت البدء (Start Time):</span> <span
                     class="value">{{ $appointment->start_time }}</span></p>
             <p class="dual-text"><span class="label">وقت الانتهاء (End Time):</span> <span
                     class="value">{{ $appointment->end_time }}</span></p>
-            <p class="dual-text">
-                <span class="label">الوقت المتبقي (Time Left):</span>
-                <span class="value" style="color: #ff5722; font-weight: bold;">
-                    1 hours ago
-                </span>
-            </p>
         </div>
     @endif
 

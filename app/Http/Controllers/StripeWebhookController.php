@@ -113,7 +113,7 @@ class StripeWebhookController extends Controller
                                 $appointmentDate . " 00:00:00",
                                 'Asia/Damascus'
                             );
-                            SendPrivateLessonReminderJob::dispatch($privateLessonInformation->id)->delay($sendAt);
+                            SendPrivateLessonReminderJob::dispatch($enrollment->id)->delay($sendAt);
 
                             Log::info('private lesson payment completed.' . $sendAt, ['private_information_id' => $privateLessonInformation->id]);
                         }
