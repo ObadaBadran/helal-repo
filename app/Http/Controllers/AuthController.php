@@ -96,9 +96,13 @@ class AuthController extends Controller
         // $token = $user->role === 'admin'
         //     ? JWTAuth::claims(['role' => 'admin'])->setTTL(525600)->login($user)
         //     : auth()->guard('api')->login($user);
-        if ($user->role === 'admin') {
-            config(['jwt.ttl' => 525600]);
-        }
+          if ($user->role === 'admin') {
+        // للأدمن سنة واحدة كما قبل
+        config(['jwt.ttl' => 525600]); // دقيقة
+    } else {
+        // للمستخدم شهر واحد
+        config(['jwt.ttl' => 43200]); // دقيقة → 30 يوم * 24 ساعة * 60 دقيقة = 43200 دقيقة
+    }
 
         $token = JWTAuth::claims(['role' => $user->role])->fromUser($user);
 

@@ -343,13 +343,10 @@ class AdminController extends Controller
         }
     }
 
-  /**
- * إرسال روابط الاجتماعات إلى المستخدمين
- */
-public function sendMeetEmails(Request $request, Meeting $meeting)
+  public function sendMeetEmails(Request $request, Meeting $meeting)
 {
     try {
-        // ✅ تحقق من وجود الاجتماع
+        // تحقق من وجود الاجتماع
         if (!$meeting) {
             return response()->json([
                 'status' => false,
@@ -357,7 +354,7 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
             ], 404);
         }
 
-        // ✅ الحصول على المستخدم الحالي (الأدمن)
+        // الحصول على المستخدم الحالي (الأدمن)
         $adminUser = auth('api')->user();
         if (!$adminUser) {
             return response()->json([
@@ -366,14 +363,16 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
             ], 401);
         }
 
-        // ✅ تحقق من البيانات المرسلة
+        // التحقق من البيانات
         $validated = $request->validate([
-            'user_ids' => 'required|array',
+            'user_ids' => 'sometimes|array',
             'user_ids.*' => 'integer|exists:users,id',
         ]);
 
-        $userIds = $validated['user_ids'];
-        $users = User::whereIn('id', $userIds)->get();
+        // إذا لم يُحدد الأدمن المستخدمين، اجلب كل المستخدمين العاديين
+        $users = empty($validated['user_ids']) 
+            ? User::where('role', 'user')->get() 
+            : User::whereIn('id', $validated['user_ids'])->get();
 
         if ($users->isEmpty()) {
             return response()->json([
@@ -382,13 +381,15 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
             ], 404);
         }
 
-        // ✅ الروابط
+        // روابط مباشرة داخل الكنترولر
+        $studentBaseUrl = 'http://localhost:5173/Helal-Aljaberi/meet/';
+        $adminBaseUrl = 'http://localhost:5173/dashboard/live-video/';
         $roomId = str_replace('https://meet.jit.si/', '', $meeting->meet_url);
 
-        $studentJoinUrl = config('services.meet_url.web') . $roomId;
-        $adminJoinUrl = config('services.meet_url.dash') . $roomId;
+        $studentJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $roomId;
+        $adminJoinUrl = rtrim($adminBaseUrl, '/') . '/' . $roomId;
 
-        // ✅ إرسال البريد لكل مستخدم عادي (رابط المستخدم فقط)
+        // إرسال البريد لكل مستخدم عادي
         foreach ($users as $user) {
             Mail::raw(
                 "Hello {$user->name},\n\n" .
@@ -413,7 +414,7 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
             );
         }
 
-        // ✅ إرسال البريد للأدمن (رابط الأدمن فقط)
+        // إرسال البريد للأدمن
         Mail::raw(
             "Hello {$adminUser->name},\n\n" .
             "You have created a new meeting.\n" .
@@ -449,6 +450,7 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
             'admin_join_url' => $adminJoinUrl,
             'invited_users' => $users->pluck('name')
         ]);
+
     } catch (ValidationException $e) {
         return response()->json([
             'status' => false,
@@ -463,6 +465,7 @@ public function sendMeetEmails(Request $request, Meeting $meeting)
         ], 500);
     }
 }
+
 
 
 }
