@@ -50,9 +50,6 @@ return [
         ],
     ],
 
-    'meet_url' => [
-    'web' => env('STUDENT_FRONTEND_BASE_URL'),
-    'dash' => env('ADMIN_FRONTEND_BASE_URL'),
-],
+   
 
 ];

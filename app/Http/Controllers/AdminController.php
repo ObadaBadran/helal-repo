@@ -382,12 +382,12 @@ class AdminController extends Controller
         }
 
         // روابط مباشرة داخل الكنترولر
-        $studentBaseUrl = 'http://localhost:5173/Helal-Aljaberi/meet/';
-        $adminBaseUrl = 'http://localhost:5173/dashboard/live-video/';
+        $studentBaseUrl = config('services.meet_url.web');
+        $adminBaseUrl = config('services.meet_url.dash');
         $roomId = str_replace('https://meet.jit.si/', '', $meeting->meet_url);
 
-        $studentJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $roomId;
-        $adminJoinUrl = rtrim($adminBaseUrl, '/') . '/' . $roomId;
+        $studentJoinUrl = $studentBaseUrl . $roomId;
+        $adminJoinUrl = $adminBaseUrl . $roomId;
 
         // إرسال البريد لكل مستخدم عادي
         foreach ($users as $user) {
