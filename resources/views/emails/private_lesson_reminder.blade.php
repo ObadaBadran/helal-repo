@@ -166,7 +166,7 @@
         $appointment = $privateLessonInformation->appointment ?? null;
         $lesson = $privateLessonInformation->lesson ?? null;
         $startDateTime = $appointment
-            ? Carbon::parse($appointment->date)->setTimeFromTimeString($appointment->start_time)
+            ? \Carbon\Carbon::parse($appointment->date)->setTimeFromTimeString($appointment->start_time)
             : null
     @endphp
 
