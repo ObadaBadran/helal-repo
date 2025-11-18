@@ -134,7 +134,7 @@
         $appointment = $consultation->appointment ?? null;
         $info = $consultation->information ?? null;
         $startDateTime = $appointment
-            ? Carbon::parse($appointment->date)->setTimeFromTimeString($appointment->start_time)
+            ? \Carbon\Carbon::parse($appointment->date)->setTimeFromTimeString($appointment->start_time)
             : null;
     @endphp
 
@@ -184,7 +184,7 @@
             <h3 style="color: #28a745; margin-top: 0;">تفاصيل الموعد / Appointment Details</h3>
             <p class="dual-text">
                 <span class="label">التاريخ (Date):</span>
-                <span class="value">{{ Carbon::parse($appointment->date)->translatedFormat('l, d F Y') }}</span>
+                <span class="value">{{ \Carbon\Carbon::parse($appointment->date)->translatedFormat('l, d F Y') }}</span>
             </p>
             <p class="dual-text"><span class="label">وقت البدء (Start Time):</span> <span class="value">{{ $appointment->start_time }}</span></p>
             <p class="dual-text"><span class="label">وقت الانتهاء (End Time):</span> <span class="value">{{ $appointment->end_time }}</span></p>

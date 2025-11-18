@@ -50,7 +50,7 @@ class ConsultationController extends Controller
                 'currency' => 'required|in:USD,AED',
             ]);
 
-            $validated['end_time'] = Carbon::createFromFormat('H:i', $validated['start_time'])->addMinutes($consultationInfo->duration)->format('H:i');
+            $validated['end_time'] = Carbon::createFromFormat('H:i', $validated['start_time'])->addMinutes(intval($consultationInfo->duration))->format('H:i');
 
             if (!$this->checkAvailabilityForDay($request->date, $validated['start_time'], $validated['end_time'])) {
                 return response()->json([
