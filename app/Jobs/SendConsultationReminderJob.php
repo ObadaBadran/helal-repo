@@ -38,18 +38,18 @@ class SendConsultationReminderJob implements ShouldQueue
         $roomName = 'meeting_' . Str::random(10);
         $meetUrl = "https://meet.jit.si/{$roomName}";
 
-        $roomId = basename($meetUrl);
+        /*$roomId = basename($meetUrl);
         $studentJoinUrl = config('services.meet_url.web') . $roomId;
-        $adminJoinUrl = config('services.meet_url.dash') . $roomId;
+        $adminJoinUrl = config('services.meet_url.dash') . $roomId;*/
 
         $consultation->update([
             'meet_url' => $meetUrl
         ]);
 
         Mail::to($consultation->user->email)
-            ->send(new ConsultationReminderMail($consultation, $studentJoinUrl));
+            ->send(new ConsultationReminderMail($consultation, $meetUrl));
 
         Mail::to(config('services.admin.address'))
-            ->send(new ConsultationReminderMail($consultation, $adminJoinUrl));
+            ->send(new ConsultationReminderMail($consultation, $meetUrl));
     }
 }
