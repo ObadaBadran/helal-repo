@@ -23,6 +23,7 @@ return new class extends Migration
             // $table->dateTime('date');
             $table->string('cover_image')->nullable();
             $table->string('meet_url')->nullable();
+            $table->boolean('active')->default(false);
             $table->timestamps();
         });
     }

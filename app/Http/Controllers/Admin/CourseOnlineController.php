@@ -109,13 +109,13 @@ class CourseOnlineController extends Controller
                 ], 404);
             }
 
-            $course->update(['meet_url' => $meetUrl]);
+            $course->update(['meet_url' => $meetUrl, 'active' => true]);
 
             foreach ($enrolledUsers as $user) {
-                $roomId = basename($course->meet_url);
-                $joinUrl = config('services.meet_url.web') . $roomId;
+                /*$roomId = basename($course->meet_url);
+                $joinUrl = config('services.meet_url.web') . $roomId;*/
 
-                Mail::to($user->email)->send(new CourseReadyMail($user, $course, $joinUrl));
+                Mail::to($user->email)->send(new CourseReadyMail($user, $course, $course->meet_url));
             }
 
             if ($course->cover_image) {
@@ -250,14 +250,16 @@ class CourseOnlineController extends Controller
             $lang = $request->query('lang', 'en');
             $page = (int)$request->query('page', 1);
             $perPage = (int)$request->query('per_page', 10);
-            $active = (bool)$request->query('active', false);
+            $active = (bool)$request->query('active');
 
             $courses = CourseOnline::with('appointment');
 
-            if($active === true)
-                $courses = $courses->whereHas('appointment', function ($query) {
-                        $query->where('date', '>', Carbon::now()->format('Y-m-d'));
-                    });
+            if($request->has('active')){
+                if($active === true)
+                    $courses = $courses->where('active', true);
+                if($active === false)
+                    $courses = $courses->where('active', false);
+            }
 
             $courses = $courses->orderBy('id', 'asc')
                 ->paginate($perPage, ['*'], 'page', $page);
@@ -281,6 +283,7 @@ class CourseOnlineController extends Controller
                     'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
                     'meet_url' => $course->meet_url,
                     'appointment' => $course->appointment,
+                    'active' => $course->active,
                 ];
             });
 
@@ -327,7 +330,7 @@ class CourseOnlineController extends Controller
             $course = $enroll->courseOnline;
             if (!$course) return null;
 
-            $joinUrl = $course->meet_url ? config('services.meet_url.web') . basename($course->meet_url) : null;
+            //$joinUrl = $course->meet_url ? config('services.meet_url.web') . basename($course->meet_url) : null;
 
             return [
                 'enroll_id' => $enroll->id,
@@ -339,7 +342,7 @@ class CourseOnlineController extends Controller
                 'price_usd' => $course->price_usd,
                 // 'date' => $course->date,
                 'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
-                'meet_url' => $joinUrl,
+                'meet_url' => $course->meet_url,
                 'appointment' => $course->appointment,
             ];
         })->filter();
@@ -388,6 +391,7 @@ class CourseOnlineController extends Controller
                     'cover_image' => $course->cover_image,
                     'meet_url' => $meetUrl,
                     'appointment' => $course->appointment,
+                    'active' => $course->active,
                 ]
             ]);
         } catch (Exception $e) {
