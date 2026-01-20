@@ -370,8 +370,8 @@ class AdminController extends Controller
         ]);
 
         // إذا لم يُحدد الأدمن المستخدمين، اجلب كل المستخدمين العاديين
-        $users = empty($validated['user_ids']) 
-            ? User::where('role', 'user')->get() 
+        $users = empty($validated['user_ids'])
+            ? User::where('role', 'user')->get()
             : User::whereIn('id', $validated['user_ids'])->get();
 
         if ($users->isEmpty()) {
@@ -382,72 +382,37 @@ class AdminController extends Controller
         }
 
         // روابط مباشرة داخل الكنترولر
-        $studentBaseUrl = config('services.meet_url.web');
+        /*$studentBaseUrl = config('services.meet_url.web');
         $adminBaseUrl = config('services.meet_url.dash');
         $roomId = str_replace('https://meet.jit.si/', '', $meeting->meet_url);
 
         $studentJoinUrl = $studentBaseUrl . $roomId;
-        $adminJoinUrl = $adminBaseUrl . $roomId;
+        $adminJoinUrl = $adminBaseUrl . $roomId;*/
 
         // إرسال البريد لكل مستخدم عادي
         foreach ($users as $user) {
-            Mail::raw(
-                "Hello {$user->name},\n\n" .
-                "A new meeting has been scheduled.\n" .
-                "Topic: {$meeting->summary}\n" .
-                "Start time: {$meeting->start_time}\n" .
-                "Duration: {$meeting->duration} minutes\n" .
-                "Join via: {$studentJoinUrl}\n\n" .
-                "Regards,\n\n" .
-                "-----------------------------\n\n" .
-                "مرحباً {$user->name},\n" .
-                "تم تحديد اجتماع جديد.\n" .
-                "الموضوع: {$meeting->summary}\n" .
-                "وقت البدء: {$meeting->start_time}\n" .
-                "المدة: {$meeting->duration} دقيقة\n" .
-                "رابط الانضمام: {$studentJoinUrl}\n\n" .
-                "تحياتنا.",
-                function ($message) use ($user, $meeting) {
-                    $message->to($user->email)
-                        ->subject("Meeting Invitation: {$meeting->summary}");
-                }
-            );
+            Mail::send('emails.meeting_scheduled', [
+                'meeting' => $meeting
+            ], function ($message) use ($user) {
+                $message->to($user->email);
+                $message->subject('Your Meeting Details');
+            });
         }
 
-        // إرسال البريد للأدمن
-        Mail::raw(
-            "Hello {$adminUser->name},\n\n" .
-            "You have created a new meeting.\n" .
-            "Topic: {$meeting->summary}\n" .
-            "Start time: {$meeting->start_time}\n" .
-            "Duration: {$meeting->duration} minutes\n" .
-            "Admin Join Link: {$adminJoinUrl}\n\n" .
-            "Invited Users:\n" .
-            $users->pluck('name')->implode("\n") . "\n\n" .
-            "Regards,\n\n" .
-            "-----------------------------\n\n" .
-            "مرحباً {$adminUser->name},\n\n" .
-            "لقد قمت بإنشاء اجتماع جديد.\n" .
-            "الموضوع: {$meeting->summary}\n" .
-            "وقت البدء: {$meeting->start_time}\n" .
-            "المدة: {$meeting->duration} دقيقة\n" .
-            "رابط الانضمام للأدمن: {$adminJoinUrl}\n\n" .
-            "المستخدمين المدعوين:\n" .
-            $users->pluck('name')->implode("\n") . "\n\n" .
-            "تحياتنا.",
-            function ($message) use ($adminUser, $meeting) {
-                $message->to($adminUser->email)
-                    ->subject("Meeting Created: {$meeting->summary}");
-            }
-        );
+        Mail::send('emails.admin_meeting_created', [
+            'meeting' => $meeting,
+            'users' => $users
+        ], function ($message) use ($adminUser) {
+            $message->to(config('services.admin.address'));
+            $message->subject('Meeting Created');
+        });
 
         return response()->json([
             'status' => true,
             'message' => 'Emails sent successfully',
             'sent_to_users' => $users->count(),
             'sent_to_admin' => 1,
-            'student_join_url' => $studentJoinUrl,
-            'admin_join_url' => $adminJoinUrl,
+            'meet_url' =>  $meeting->meet_url,
             'invited_users' => $users->pluck('name')
         ]);
 
