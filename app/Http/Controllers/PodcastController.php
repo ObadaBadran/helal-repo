@@ -95,7 +95,7 @@ class PodcastController extends Controller
         $podcast = Podcast::create(array_merge($data, ['cover' => $coverPath]));
 
         // تعديل الرابط ليكون كامل
-        $podcast->cover = $podcast->cover ? url($podcast->cover) : null;
+        $podcast->cover = $podcast->cover ? asset($podcast->cover) : null;
 
         return response()->json([
             'status' => true,
@@ -137,7 +137,7 @@ class PodcastController extends Controller
         $podcast->update($data);
 
         // تعديل الرابط ليكون كامل
-        $podcast->cover = $podcast->cover ? url($podcast->cover) : null;
+        $podcast->cover = $podcast->cover ? asset($podcast->cover) : null;
 
         return response()->json([
             'status' => true,
