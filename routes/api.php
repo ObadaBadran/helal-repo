@@ -18,6 +18,7 @@ use App\Http\Controllers\ConsultationInformationController;
 use App\Http\Controllers\User\AppointmentController;
 use App\Http\Controllers\PrivateLessonInformationController;
 use App\Http\Controllers\PrivateLessonController;
+use App\Http\Controllers\PodcastController;
 use Illuminate\Support\Facades\Mail;
 
 Route::post('/admin/create-meet', [AdminController::class, 'createMeet'])->middleware('admin');
@@ -174,4 +175,14 @@ Route::prefix('admin/private-lesson-information')->middleware(['auth.api', 'admi
     Route::post('/add/{private_lesson_id}', [PrivateLessonInformationController::class, 'store']);
     Route::put('/update/{id}', [PrivateLessonInformationController::class, 'update']);
     Route::delete('delete/{id}', [PrivateLessonInformationController::class, 'destroy']);
+});
+
+
+//podcasts
+Route::get('/podcasts/all',[PodcastController::class,'index']);
+Route::get('/podcasts/show/{id}',[PodcastController::class,'show']);
+Route::prefix('admin/podcasts')->middleware(['auth.api', 'admin'])->group(function () {
+    Route::post('/add',[PodcastController::class,'store']);
+    Route::post('/update/{id}',[PodcastController::class,'update']);
+    Route::delete('/delete/{id}',[PodcastController::class,'destroy']);
 });
