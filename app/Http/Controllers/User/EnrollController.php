@@ -139,6 +139,38 @@ class EnrollController extends Controller
             $type = 'private_lesson';
         }
 
+        $existingEnrollment = Enroll::where('user_id', $user->id)
+        ->when($request->course_id, fn($q) => $q->where('course_id', $request->course_id))
+        ->when($request->course_online_id, fn($q) => $q->where('course_online_id', $request->course_online_id))
+        ->when($request->private_information_id, fn($q) => $q->where('private_information_id', $request->private_information_id))
+        ->where('payment_status', 'paid')
+        ->exists();
+
+    if ($existingEnrollment) {
+        return response()->json(['status' => 'info', 'message' => 'Already enrolled'], 409);
+    }
+
+    // إذا كان الكورس مجاني
+    if ($amount == 0) {
+        $enrollment = Enroll::create([
+            'course_id' => $request->course_id,
+            'course_online_id' => $request->course_online_id,
+            'private_information_id' => $request->private_information_id,
+            'user_id' => $user->id,
+            'payment_status' => 'paid',
+            'payment_method' => 'free',
+            'amount' => 0,
+            'currency' => strtoupper($currency),
+            'is_enroll' => true,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Enrolled successfully in free course.',
+            'enrollment_id' => $enrollment->id
+        ]);
+    }
+
         $enrollment = Enroll::create([
             'course_id' => $request->course_id,
             'course_online_id' => $request->course_online_id,
