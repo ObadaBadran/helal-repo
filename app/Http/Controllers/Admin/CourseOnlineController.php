@@ -315,49 +315,55 @@ class CourseOnlineController extends Controller
     /**
      * كورسات المستخدم
      */
-    public function myCourses(Request $request)
-    {
-        $lang = $request->query('lang', 'en');
+   public function myCourses(Request $request)
+{
+    $lang = $request->query('lang', 'en');
+    $user = auth('api')->user();
 
-        $user = auth('api')->user();
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized'
-            ], 401);
+    if (!$user) {
+        return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
+    }
+
+    $enrolls = $user->enrolls()
+        ->with('courseOnline.appointment')
+        ->whereNotNull('course_online_id')
+        ->get();
+
+    $data = $enrolls->map(function ($enroll) use ($lang) {
+        $course = $enroll->courseOnline;
+        if (!$course) return null;
+
+        // تركيب الرابط الكامل ديناميكياً
+        $channelName = $course->meet_url;
+        $fullJoinUrl = null;
+        
+        if ($channelName) {
+            $studentBaseUrl = config('services.meet_url.web');
+            $fullJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $channelName;
         }
 
-        $enrolls = $user->enrolls()
-            ->with('courseOnline')
-            ->whereNotNull('course_online_id')
-            ->get();
+        return [
+            'enroll_id' => $enroll->id,
+            'course_id' => $course->id,
+            'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
+            'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
+            'price_aed' => $course->price_aed,
+            'price_usd' => $course->price_usd,
+            'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
+            
+            // إضافة الحقول الجديدة هنا
+            'channel_name' => $channelName,
+            'join_url'     => $fullJoinUrl, 
+            
+            'appointment' => $course->appointment,
+        ];
+    })->filter()->values(); // استخدام values لإعادة ترتيب المصفوفة بعد الـ filter
 
-        $data = $enrolls->map(function ($enroll) use ($lang) {
-            $course = $enroll->courseOnline;
-            if (!$course) return null;
-
-            //$joinUrl = $course->meet_url ? config('services.meet_url.web') . basename($course->meet_url) : null;
-
-            return [
-                'enroll_id' => $enroll->id,
-                'course_id' => $course->id,
-                'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
-                'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
-                // 'duration' => $course->duration,
-                'price_aed' => $course->price_aed,
-                'price_usd' => $course->price_usd,
-                // 'date' => $course->date,
-                'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
-                'meet_url' => $course->meet_url,
-                'appointment' => $course->appointment,
-            ];
-        })->filter();
-
-        return response()->json([
-            'status' => true,
-            'data' => $data
-        ]);
-    }
+    return response()->json([
+        'status' => true,
+        'data' => $data
+    ]);
+}
 
     /**
      * عرض كورس محدد
