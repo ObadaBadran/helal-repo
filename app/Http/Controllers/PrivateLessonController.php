@@ -21,7 +21,9 @@ class PrivateLessonController extends Controller
 
             $lessonsPaginated = PrivateLesson::paginate($perPage, ['*'], 'page', $page);
 
-            $data = $lessonsPaginated->map(function ($lesson) use ($lang) {
+            $data = $lessonsPaginated
+    ->getCollection()
+    ->map(function ($lesson) use ($lang) {
                 return [
                     'id' => $lesson->id,
                     'title' => $lang === 'ar' ? $lesson->title_ar : $lesson->title_en,
@@ -32,7 +34,7 @@ class PrivateLessonController extends Controller
                     'created_at' => $lesson->created_at,
                     'updated_at' => $lesson->updated_at,
                 ];
-            });
+            })->values();
 
             return response()->json([
                 'status' => true,

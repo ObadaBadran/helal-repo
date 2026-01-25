@@ -19,7 +19,27 @@ use App\Http\Controllers\User\AppointmentController;
 use App\Http\Controllers\PrivateLessonInformationController;
 use App\Http\Controllers\PrivateLessonController;
 use App\Http\Controllers\PodcastController;
+use App\Http\Controllers\AgoraController;
 use Illuminate\Support\Facades\Mail;
+
+
+Route::middleware('auth.api')->group(function () {
+    
+    // الطلاب والأدمن للحصول على توكن الدخول
+    Route::get('/agora/join/{channelName}', [AgoraController::class, 'getJoinData']);
+    Route::post('/agora/raise-hand', [AgoraController::class, 'raiseHand']);
+
+    // صلاحيات الأدمن فقط
+    Route::middleware('admin')->group(function () {
+        Route::post('/agora/mute', [AgoraController::class, 'muteUser']);
+        Route::post('/agora/kick', [AgoraController::class, 'kickUser']);
+        Route::get('/agora/participants/{channelName}', [AgoraController::class, 'getParticipants']);
+        
+        // إنشاء الاجتماع
+        Route::post('/admin/meetings/create', [AdminController::class, 'createMeet']);
+        Route::post('/admin/meetings/send-emails/{meeting}', [AdminController::class, 'sendMeetEmails']);
+    });
+});
 
 Route::post('/admin/create-meet', [AdminController::class, 'createMeet'])->middleware('admin');
 Route::post('/admin/send-meet-emails/{meeting}', [AdminController::class, 'sendMeetEmails'])->middleware('admin');

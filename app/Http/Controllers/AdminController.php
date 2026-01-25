@@ -64,9 +64,6 @@ class AdminController extends Controller
                 ];
             });
 
-            if ($data->isEmpty()) {
-                return response()->json(['message' => 'No users found.'], 404);
-            }
 
             return response()->json([
                 'status' => true,
@@ -287,145 +284,107 @@ class AdminController extends Controller
 
     public function createMeet(Request $request)
     {
-        try {
-            // ✅ التحقق من البيانات
-            $validated = $request->validate([
-                'summary' => 'nullable|string|max:255',
-                'start_time' => 'nullable|date',
-                'duration' => 'nullable|integer|min:1|max:480', // 8 ساعات كحد أقصى
-            ]);
+    try {
+        $validated = $request->validate([
+            'summary' => 'required|string|max:255',
+            'start_time' => 'required|date',
+            'duration' => 'required|integer|min:1',
+        ]);
 
-            $summary = $validated['summary'] ?? 'Meeting';
-            $startTime = $validated['start_time'] ?? now();
-            $duration = $validated['duration'] ?? 60;
+        // توليد اسم قناة فريد لـ Agora
+        $channelName = 'course_' . Str::random(10);
 
-            // ✅ إنشاء رابط الاجتماع العشوائي
-            $roomName = 'meeting_' . Str::random(10);
-            $meetUrl = "https://meet.jit.si/{$roomName}";
+        $meeting = Meeting::create([
+            'summary' => $validated['summary'],
+            'start_time' => $validated['start_time'],
+            'duration' => $validated['duration'],
+            'meet_url' => $channelName, // نخزن هنا اسم القناة لاستخدامه في التوكن لاحقاً
+        ]);
 
-            // ✅ حفظ الاجتماع
-            $meeting = Meeting::create([
-                'summary' => $summary,
-                'start_time' => $startTime,
-                'duration' => $duration,
-                'meet_url' => $meetUrl,
-            ]);
+        return response()->json([
+            'status' => true,
+            'message' => 'Meeting created successfully',
+            'meeting' => $meeting
+        ], 201);
 
-            // ✅ حذف الاجتماعات القديمة والإبقاء على آخر 10
-            $totalMeetings = Meeting::count();
-            if ($totalMeetings > 10) {
-                $toDelete = Meeting::orderBy('created_at', 'asc')
-                    ->take($totalMeetings - 10)
-                    ->get();
-
-                foreach ($toDelete as $oldMeeting) {
-                    $oldMeeting->delete();
-                }
-            }
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Meeting created successfully',
-                'meeting' => $meeting
-            ], 201);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->getMessage()
-            ], 422);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'An error occurred while creating the meeting',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Validation error',
+            'errors' => $e->errors()
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Error creating meeting',
+            'error' => $e->getMessage()
+        ], 500);
     }
-
+}
   public function sendMeetEmails(Request $request, Meeting $meeting)
 {
     try {
-        // تحقق من وجود الاجتماع
-        if (!$meeting) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Meeting not found'
-            ], 404);
-        }
-
-        // الحصول على المستخدم الحالي (الأدمن)
+       
         $adminUser = auth('api')->user();
-        if (!$adminUser) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Unauthorized'
-            ], 401);
-        }
 
-        // التحقق من البيانات
+       
         $validated = $request->validate([
             'user_ids' => 'sometimes|array',
             'user_ids.*' => 'integer|exists:users,id',
         ]);
 
-        // إذا لم يُحدد الأدمن المستخدمين، اجلب كل المستخدمين العاديين
+        // 3. تحديد الفئة المستهدفة: إما IDs محددة أو كل الطلاب
         $users = empty($validated['user_ids'])
             ? User::where('role', 'user')->get()
             : User::whereIn('id', $validated['user_ids'])->get();
 
         if ($users->isEmpty()) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No users found to send email.'
-            ], 404);
+            return response()->json(['status' => false, 'message' => 'No users found.'], 404);
         }
 
-        // روابط مباشرة داخل الكنترولر
-        /*$studentBaseUrl = config('services.meet_url.web');
+        
+        $studentBaseUrl = config('services.meet_url.web'); 
         $adminBaseUrl = config('services.meet_url.dash');
-        $roomId = str_replace('https://meet.jit.si/', '', $meeting->meet_url);
 
-        $studentJoinUrl = $studentBaseUrl . $roomId;
-        $adminJoinUrl = $adminBaseUrl . $roomId;*/
+        $studentJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $meeting->meet_url;
+        $adminJoinUrl = rtrim($adminBaseUrl, '/') . '/' . $meeting->meet_url;
 
-        // إرسال البريد لكل مستخدم عادي
+        // 5. إرسال الإيميلات للطلاب
         foreach ($users as $user) {
             Mail::send('emails.meeting_scheduled', [
-                'meeting' => $meeting
+                'url' => $studentJoinUrl,
+                'meeting' => $meeting,
+                'user' => $user
             ], function ($message) use ($user) {
-                $message->to($user->email);
-                $message->subject('Your Meeting Details');
+                $message->to($user->email)->subject('موعد محاضرة مباشرة جديدة');
             });
         }
 
-        Mail::send('emails.admin_meeting_created', [
-            'meeting' => $meeting,
-            'users' => $users
-        ], function ($message) use ($adminUser) {
-            $message->to(config('services.admin.address'));
-            $message->subject('Meeting Created');
-        });
+        // 6. إرسال إشعار للأدمن برابط لوحة التحكم الخاصة به
+        if (config('services.admin.address')) {
+            Mail::send('emails.admin_meeting_created', [
+                'meeting' => $meeting,
+                'url' => $adminJoinUrl,
+                'users_count' => $users->count()
+            ], function ($message) {
+                $message->to(config('services.admin.address'))->subject('تم إنشاء الاجتماع بنجاح');
+            });
+        }
 
         return response()->json([
             'status' => true,
             'message' => 'Emails sent successfully',
-            'sent_to_users' => $users->count(),
-            'sent_to_admin' => 1,
-            'meet_url' =>  $meeting->meet_url,
-            'invited_users' => $users->pluck('name')
+            'details' => [
+                'sent_to' => $users->count(),
+                'channel_name' => $meeting->meet_url,
+                'student_url' => $studentJoinUrl
+            ]
         ]);
 
-    } catch (ValidationException $e) {
+    } catch (\Exception $e) {
         return response()->json([
             'status' => false,
-            'message' => 'Validation failed',
-            'errors' => $e->getMessage()
-        ], 422);
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'An error occurred while sending emails',
+            'message' => 'Failed to send emails',
             'error' => $e->getMessage()
         ], 500);
     }

@@ -8,12 +8,15 @@
     "require": {
         "php": "^8.2",
         "2checkout/2checkout-php": "^0.4.0",
+        "api-video/php-api-client": "^1.4",
         "google/apiclient": "2.16",
         "laravel/framework": "^11.31",
         "laravel/scout": "*",
         "laravel/tinker": "^2.9",
+        "nyholm/psr7": "^1.8",
         "pusher/pusher-php-server": "^7.2",
         "stripe/stripe-php": "^18.1",
+        "symfony/http-client": "^7.4",
         "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {

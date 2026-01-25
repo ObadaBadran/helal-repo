@@ -28,7 +28,6 @@ class CourseController extends Controller
         $perPage = (int)$request->query('per_page', 10);
         $user = auth('api')->user();
 
-        // استخدام paginate بدلاً من get
         $coursesPaginated = Course::select(
             'id',
             'title_en', 'title_ar',
@@ -39,9 +38,23 @@ class CourseController extends Controller
             'image',
         )->paginate($perPage, ['*'], 'page', $page);
 
-        // تحويل البيانات مع تمرير $perPage للاستخدام الداخلي
-        $data = $coursesPaginated->getCollection()->map(function ($course) use ($lang, $user, $perPage) {
+      
+        if ($coursesPaginated->total() === 0) {
+            return response()->json([
+                'status' => true,
+                'data' => [],   // مصفوفة فارغة
+                'pagination' => [
+                    'current_page' => $coursesPaginated->currentPage(),
+                    'last_page' => $coursesPaginated->lastPage(),
+                    'per_page' => $coursesPaginated->perPage(),
+                    'total' => 0,
+                ]
+            ], 200);
+        }
+
+        $data = $coursesPaginated->getCollection()->map(function ($course) use ($lang, $user) {
             $isEnrolled = false;
+
             if ($user) {
                 $isEnrolled = Enroll::where('user_id', $user->id)
                     ->where('course_id', $course->id)
@@ -62,7 +75,7 @@ class CourseController extends Controller
             ];
         });
 
-        // إعادة بناء الـ paginator مع البيانات المعدلة
+        // إعادة وضع البيانات داخل الـ paginator
         $coursesPaginated->setCollection($data);
 
         return response()->json([
@@ -74,17 +87,17 @@ class CourseController extends Controller
                 'per_page' => $coursesPaginated->perPage(),
                 'total' => $coursesPaginated->total(),
             ]
-        ]);
+        ], 200);
 
     } catch (Exception $e) {
         return response()->json([
-            'status' => 'error',
+            'status' => false,
+            'data' => [],  // حتى في الخطأ نرجع مصفوفة فاضية
             'message' => 'Failed to retrieve courses',
             'error' => $e->getMessage()
         ], 500);
     }
 }
-
 
     public function store(Request $request)
     {
@@ -269,12 +282,15 @@ class CourseController extends Controller
 
 
 
-   public function destroy($id)
+  public function destroy($id)
 {
     try {
         $course = Course::findOrFail($id);
 
-        // حذف الصورة من المجلد إن وجدت
+        
+        Enroll::where('course_id', $course->id)->delete();
+
+        // 🖼️ حذف الصورة من المجلد إن وجدت
         if ($course->image) {
             $imagePath = public_path($course->image);
             if (file_exists($imagePath)) {
@@ -282,11 +298,12 @@ class CourseController extends Controller
             }
         }
 
+        // 🗑️ حذف الكورس نفسه
         $course->delete();
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Course deleted successfully'
+            'message' => 'Course and related enrollments deleted successfully'
         ], 200);
 
     } catch (ModelNotFoundException $e) {

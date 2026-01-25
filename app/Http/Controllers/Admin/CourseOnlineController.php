@@ -86,56 +86,68 @@ class CourseOnlineController extends Controller
     /**
      * إضافة رابط الاجتماع وإرسال البريد
      */
-    public function addMeetUrl(Request $request, CourseOnline $course)
-    {
-        try {
-            $meetUrl = $request->input('meet_url');
-            if (!$meetUrl) {
-                $roomName = 'course_' . Str::random(10);
-                $meetUrl = "https://meet.jit.si/$roomName";
-            }
+   public function addMeetUrl(Request $request, CourseOnline $course)
+{
+    try {
+        
+        $channelName = $request->input('meet_url');
+        if (!$channelName) {
+            $channelName = 'course_live_' . Str::random(10);
+        }
 
-            $enrolledUsers = $course->enrolls()
-                ->where('payment_status', 'paid')
-                ->with('user')
-                ->get()
-                ->pluck('user')
-                ->unique('id');
+        $enrolledUsers = $course->enrolls()
+            ->where('payment_status', 'paid')
+            ->with('user')
+            ->get()
+            ->pluck('user')
+            ->unique('id');
 
-            if ($enrolledUsers->isEmpty()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'No enrolled users found to send emails.'
-                ], 404);
-            }
-
-            $course->update(['meet_url' => $meetUrl, 'active' => true]);
-
-            foreach ($enrolledUsers as $user) {
-                /*$roomId = basename($course->meet_url);
-                $joinUrl = config('services.meet_url.web') . $roomId;*/
-
-                Mail::to($user->email)->send(new CourseReadyMail($user, $course, $course->meet_url));
-            }
-
-            if ($course->cover_image) {
-                $course->cover_image = asset($course->cover_image);
-            }
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Meeting link added and emails sent successfully.',
-                'data' => $course,
-                'meet_url' => $meetUrl
-            ]);
-        } catch (Exception $e) {
+        if ($enrolledUsers->isEmpty()) {
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to add meeting link or send emails.',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'No enrolled users found to send emails.'
+            ], 404);
         }
+
+        
+        $course->update([
+            'meet_url' => $channelName, 
+           
+        ]);
+
+       
+        $studentBaseUrl = config('services.meet_url.web'); // http://localhost:5173/Helal-Aljaberi/meet/
+        $fullJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $channelName;
+
+        foreach ($enrolledUsers as $user) {
+           
+            Mail::to($user->email)->send(new CourseReadyMail($user, $course, $fullJoinUrl));
+        }
+
+        // تحسين عرض البيانات في الرد
+        if ($course->cover_image) {
+            $course->cover_image = asset($course->cover_image);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Agora channel created and emails sent successfully.',
+            'data' => [
+                'course_id' => $course->id,
+                'channel_name' => $channelName,
+                'join_url' => $fullJoinUrl,
+                'active' => $course->active
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to process Agora meeting.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * تحديث كورس
@@ -264,13 +276,7 @@ class CourseOnlineController extends Controller
             $courses = $courses->orderBy('id', 'asc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
-            if ($courses->isEmpty()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'No courses found.'
-                ], 404);
-            }
-
+           
             $data = $courses->map(function ($course) use ($lang) {
                 return [
                     'id' => $course->id,
@@ -281,9 +287,9 @@ class CourseOnlineController extends Controller
                     'price_usd' => $course->price_usd,
                     // 'date' => $course->date,
                     'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
-                    'meet_url' => $course->meet_url,
+                    //'meet_url' => $course->meet_url,
                     'appointment' => $course->appointment,
-                    'active' => $course->active,
+                    //'active' => $course->active,
                 ];
             });
 
@@ -389,9 +395,9 @@ class CourseOnlineController extends Controller
                     'price_usd' => $course->price_usd,
                     // 'date' => $course->date,
                     'cover_image' => $course->cover_image,
-                    'meet_url' => $meetUrl,
+                  //  'meet_url' => $meetUrl,
                     'appointment' => $course->appointment,
-                    'active' => $course->active,
+                  //  'active' => $course->active,
                 ]
             ]);
         } catch (Exception $e) {
@@ -406,30 +412,35 @@ class CourseOnlineController extends Controller
     /**
      * حذف كورس
      */
-    public function destroy(CourseOnline $course)
-    {
-        try {
-            if ($course->cover_image && file_exists(public_path($course->cover_image))) {
-                unlink(public_path($course->cover_image));
-            }
+   public function destroy(CourseOnline $course)
+{
+    try {
+       
+        Enroll::where('course_online_id', $course->id)->delete();
 
-
-            if ($course->appointment) {
-                $course->appointment->delete();
-            }
-
-            $course->delete();
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Course deleted successfully.'
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Failed to delete course.',
-                'error' => $e->getMessage()
-            ], 500);
+        
+        if ($course->cover_image && file_exists(public_path($course->cover_image))) {
+            unlink(public_path($course->cover_image));
         }
+
+       
+        if ($course->appointment) {
+            $course->appointment->delete();
+        }
+
+        
+        $course->delete();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Course and related enrollments deleted successfully.'
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to delete course.',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 }

@@ -126,7 +126,7 @@
     </div>
 
     <div style="text-align: center; margin-top: 25px;">
-        <a class="join-btn" href="{{ $meeting->meet_url }}" target="_blank">Join Meeting</a>
+       <a class="join-btn" href="{{ $url }}" target="_blank">Join Meeting</a>
     </div>
 
     <div class="footer">
