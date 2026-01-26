@@ -87,7 +87,7 @@ class CourseOnlineController extends Controller
      * إضافة رابط الاجتماع وإرسال البريد
      */
    public function addMeetUrl(Request $request, CourseOnline $course)
-{
+   {
     try {
         
         $channelName = $request->input('meet_url');
@@ -116,7 +116,7 @@ class CourseOnlineController extends Controller
         ]);
 
        
-        $studentBaseUrl = config('services.meet_url.web'); // http://localhost:5173/Helal-Aljaberi/meet/
+        $studentBaseUrl = config('services.meet_url.web'); 
         $fullJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $channelName;
 
         foreach ($enrolledUsers as $user) {
@@ -153,7 +153,7 @@ class CourseOnlineController extends Controller
      * تحديث كورس
      */
     public function update(Request $request, $id)
-{
+   {
     try {
         $course = CourseOnline::findOrFail($id);
 
@@ -364,6 +364,85 @@ class CourseOnlineController extends Controller
         'data' => $data
     ]);
 }
+
+   
+public function adminPaidCourses(Request $request)
+{
+    try {
+        $lang = $request->query('lang', 'en');
+        $page = (int) $request->query('page', 1);
+        $perPage = (int) $request->query('per_page', 10);
+
+        // جلب جميع الاشتراكات المدفوعة مع العلاقات
+        $enrolls = Enroll::where('payment_status', 'paid')
+            ->with([
+                'user',
+                'courseOnline.appointment'
+            ])
+            ->orderBy('id', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $studentBaseUrl = config('services.meet_url.web');
+
+        $data = $enrolls->getCollection()->map(function ($enroll) use ($lang, $studentBaseUrl) {
+
+            $course = $enroll->courseOnline;
+            $user   = $enroll->user;
+
+            if (!$course || !$user) return null;
+
+            $channelName = $course->meet_url;
+            $joinUrl = $channelName
+                ? rtrim($studentBaseUrl, '/') . '/' . $channelName
+                : null;
+
+            return [
+                'enroll_id' => $enroll->id,
+
+                // بيانات المستخدم
+                'user' => [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
+                    'email' => $user->email,
+                ],
+
+                // بيانات الكورس
+                'course' => [
+                    'id'          => $course->id,
+                    'name'        => $lang === 'ar' ? $course->name_ar : $course->name_en,
+                    'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
+                    'price_aed'   => $course->price_aed,
+                    'price_usd'   => $course->price_usd,
+                    'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
+
+                    'channel_name' => $channelName,
+                    'join_url'     => $joinUrl,
+
+                    'appointment' => $course->appointment,
+                ],
+            ];
+        })->filter()->values();
+
+        return response()->json([
+            'status' => true,
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $enrolls->currentPage(),
+                'last_page'    => $enrolls->lastPage(),
+                'per_page'     => $enrolls->perPage(),
+                'total'        => $enrolls->total(),
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Failed to fetch paid courses.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
 
     /**
      * عرض كورس محدد

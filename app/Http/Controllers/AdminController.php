@@ -363,9 +363,9 @@ class AdminController extends Controller
         // 6. إرسال إشعار للأدمن برابط لوحة التحكم الخاصة به
         if (config('services.admin.address')) {
             Mail::send('emails.admin_meeting_created', [
-                'meeting' => $meeting,
-                'url' => $adminJoinUrl,
-                'users_count' => $users->count()
+               'meeting' => $meeting,
+               'url'     => $adminJoinUrl, // تمرير الرابط ليتناسب مع الـ Blade
+               'users'   => $users,
             ], function ($message) {
                 $message->to(config('services.admin.address'))->subject('تم إنشاء الاجتماع بنجاح');
             });
