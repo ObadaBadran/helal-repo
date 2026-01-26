@@ -302,10 +302,21 @@ class AdminController extends Controller
         ]);
 
         return response()->json([
-            'status' => true,
-            'message' => 'Meeting created successfully',
-            'meeting' => $meeting
-        ], 201);
+    'status' => true,
+    'message' => 'Meeting created successfully',
+    'meeting' => [
+        'id' => $meeting->id,
+        'summary' => $meeting->summary,
+        'start_time' => $meeting->start_time,
+        'duration' => $meeting->duration,
+
+        
+        'channel_name' => $meeting->meet_url,
+
+        'created_at' => $meeting->created_at,
+        'updated_at' => $meeting->updated_at,
+    ]
+], 201);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
         return response()->json([

@@ -36,7 +36,7 @@ Route::middleware('auth.api')->group(function () {
         Route::get('/agora/participants/{channelName}', [AgoraController::class, 'getParticipants']);
         
         // إنشاء الاجتماع
-        Route::post('/admin/meetings/create', [AdminController::class, 'createMeet']);
+        Route::post('/admin/create-meet', [AdminController::class, 'createMeet']);
         Route::post('/admin/meetings/send-emails/{meeting}', [AdminController::class, 'sendMeetEmails']);
     });
 });
