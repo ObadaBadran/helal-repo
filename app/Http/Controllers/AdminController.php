@@ -84,18 +84,40 @@ class AdminController extends Controller
         }
     }
 
-    public function getMeetings()
-    {
+   public function getMeetings()
+{
+    try {
+
         $meetings = Meeting::all();
-        if ($meetings->isEmpty()) {
-            return response()->json(['message' => 'No meetings found.'], 404);
-        }
+
+        $data = $meetings->map(function ($meeting) {
+            return [
+                'id'           => $meeting->id,
+                'summary'      => $meeting->summary,
+                'start_time'   => $meeting->start_time,
+                'duration'     => $meeting->duration,
+                'channel_name' => $meeting->meet_url,
+                'created_at'   => $meeting->created_at,
+                'updated_at'   => $meeting->updated_at,
+            ];
+        });
 
         return response()->json([
-            'message' => 'Meetings have been successfully retrieved ✅',
-            'data' => $meetings
+            'status'  => true,
+            'message' => 'Meetings fetched successfully',
+            'data'    => $data,   
         ], 200);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'status'  => false,
+            'message' => 'Failed to fetch meetings',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     public function addConsultationResponse(Request $request)
     {

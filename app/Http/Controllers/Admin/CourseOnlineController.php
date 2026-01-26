@@ -382,7 +382,7 @@ public function adminPaidCourses(Request $request)
             ->orderBy('id', 'desc')
             ->paginate($perPage, ['*'], 'page', $page);
 
-        $studentBaseUrl = config('services.meet_url.web');
+        $studentBaseUrl = config('services.meet_url.dash');
 
         $data = $enrolls->getCollection()->map(function ($enroll) use ($lang, $studentBaseUrl) {
 
