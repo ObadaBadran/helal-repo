@@ -373,71 +373,60 @@ public function adminPaidCourses(Request $request)
         $page = (int) $request->query('page', 1);
         $perPage = (int) $request->query('per_page', 10);
 
-        // جلب جميع الاشتراكات المدفوعة مع العلاقات
-        $enrolls = Enroll::where('payment_status', 'paid')
-            ->with([
-                'user',
-                'courseOnline.appointment'
-            ])
+        // جلب الكورسات التي لديها "اشتراكات مدفوعة" فقط
+        // نستخدم whereHas للتأكد من وجود مشتركين دفعوا فعلياً
+        $courses = CourseOnline::whereHas('enrolls', function ($query) {
+                $query->where('payment_status', 'paid');
+            })
+            ->with(['appointment'])
+            ->withCount(['enrolls as paid_students_count' => function ($query) {
+                $query->where('payment_status', 'paid');
+            }])
             ->orderBy('id', 'desc')
             ->paginate($perPage, ['*'], 'page', $page);
 
-        $studentBaseUrl = config('services.meet_url.dash');
+        $adminBaseUrl = config('services.meet_url.dash');
 
-        $data = $enrolls->getCollection()->map(function ($enroll) use ($lang, $studentBaseUrl) {
-
-            $course = $enroll->courseOnline;
-            $user   = $enroll->user;
-
-            if (!$course || !$user) return null;
-
+        $data = $courses->getCollection()->map(function ($course) use ($lang, $adminBaseUrl) {
+            
             $channelName = $course->meet_url;
             $joinUrl = $channelName
-                ? rtrim($studentBaseUrl, '/') . '/' . $channelName
+                ? rtrim($adminBaseUrl, '/') . '/' . $channelName
                 : null;
 
             return [
-                'enroll_id' => $enroll->id,
+                'id'           => $course->id,
+                'name'         => $lang === 'ar' ? $course->name_ar : $course->name_en,
+                'description'  => $lang === 'ar' ? $course->description_ar : $course->description_en,
+                'price_aed'    => $course->price_aed,
+                'price_usd'    => $course->price_usd,
+                'cover_image'  => $course->cover_image ? asset($course->cover_image) : null,
+                'paid_students_count' => $course->paid_students_count, // عدد الطلاب الذين دفعوا لهذا الكورس
 
-                // بيانات المستخدم
-                'user' => [
-                    'id'    => $user->id,
-                    'name'  => $user->name,
-                    'email' => $user->email,
-                ],
+                // بيانات البث
+                'channel_name' => $channelName,
+                'join_url'     => $joinUrl,
 
-                // بيانات الكورس
-                'course' => [
-                    'id'          => $course->id,
-                    'name'        => $lang === 'ar' ? $course->name_ar : $course->name_en,
-                    'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
-                    'price_aed'   => $course->price_aed,
-                    'price_usd'   => $course->price_usd,
-                    'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
-
-                    'channel_name' => $channelName,
-                    'join_url'     => $joinUrl,
-
-                    'appointment' => $course->appointment,
-                ],
+                // الموعد
+                'appointment'  => $course->appointment,
             ];
-        })->filter()->values();
+        });
 
         return response()->json([
             'status' => true,
             'data' => $data,
             'pagination' => [
-                'current_page' => $enrolls->currentPage(),
-                'last_page'    => $enrolls->lastPage(),
-                'per_page'     => $enrolls->perPage(),
-                'total'        => $enrolls->total(),
+                'current_page' => $courses->currentPage(),
+                'last_page'    => $courses->lastPage(),
+                'per_page'     => $courses->perPage(),
+                'total'        => $courses->total(),
             ]
         ]);
 
     } catch (Exception $e) {
         return response()->json([
             'status' => false,
-            'message' => 'Failed to fetch paid courses.',
+            'message' => 'Failed to fetch unique paid courses.',
             'error' => $e->getMessage()
         ], 500);
     }
