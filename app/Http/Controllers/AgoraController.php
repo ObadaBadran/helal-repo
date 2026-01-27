@@ -15,6 +15,57 @@ class AgoraController extends Controller
         $this->agora = $agora;
     }
 
+
+    public function showBroadcast($channelName)
+{
+    // 1. توليد UID عشوائي
+    $uid = rand(10000, 99999);
+
+    $adminKey = "channel-admin-" . $channelName;
+    $participantsKey = "channel-participants-" . $channelName;
+
+    // 2. إدارة منطق الآدمن
+    if (!Cache::has($adminKey)) {
+        Cache::put($adminKey, $uid, now()->addHours(2));
+        $isAdmin = true;
+        $adminUid = $uid;
+    } else {
+        $isAdmin = false;
+        $adminUid = Cache::get($adminKey);
+    }
+
+    // 3. تحديث قائمة المشاركين في الكاش
+    $participants = Cache::get($participantsKey, []);
+    $participants[$uid] = [
+        'uid' => $uid,
+        'name' => $isAdmin ? 'Teacher' : 'Student ' . $uid,
+        'isAdmin' => $isAdmin,
+        'raisedHand' => false,
+        'isMuted' => false,
+        'videoEnabled' => true,
+        'joined_at' => now()->toDateTimeString()
+    ];
+    
+    // حفظ في الكاش مع التأكد من وجود البيانات
+    Cache::put($participantsKey, $participants, now()->addHours(2));
+
+    // 4. توليد التوكن
+    try {
+        $token = $this->agora->generateToken($channelName, $uid);
+    } catch (\Throwable $e) {
+        abort(500, "Token Error: " . $e->getMessage());
+    }
+
+    return view('live.broadcast', [
+        'appId'       => config('services.agora.app_id'),
+        'token'       => $token,
+        'channelName' => $channelName,
+        'uid'         => $uid,
+        'isAdmin'     => $isAdmin,
+        'adminUid'    => $adminUid,
+        'participants' => $participants
+    ]);
+}
     /**
      * عرض البث المباشر للقناة    // إذا لم يوجد آدمن بعد، يصبح هذا المستخدم أول آدمن
      */
@@ -28,8 +79,11 @@ class AgoraController extends Controller
         return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
     }
 
-    $uid = $user->id;
-    
+   // $uid = $user->id;
+ //  $uid = crc32($user->id . microtime());
+
+    $uid = random_int(1, 2000000000);
+
     // 3. تحديد هل هو أدمن بناءً على قاعدة البيانات (وليس أسبقية الدخول)
     // نفترض أن عندك حقل في جدول المستخدمين اسمه role
     $isAdmin = ($user->role === 'admin'); 
@@ -67,7 +121,8 @@ class AgoraController extends Controller
         $role = $isAdmin ? 1 : 2; // 1: Host/Publisher, 2: Subscriber
         
         // تأكد من تحديث دالة generateToken في AgoraService لتقبل هذا المتغير
-        $token = $this->agora->generateToken($channelName, $uid, $role);
+       // $token = $this->agora->generateToken($channelName, $uid, $role);
+$token = $this->agora->generateToken($channelName, $uid, 3600);
 
         return response()->json([
             'status' => true,
