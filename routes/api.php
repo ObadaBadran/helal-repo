@@ -34,7 +34,7 @@ Route::middleware('auth.api')->group(function () {
         Route::post('/agora/mute', [AgoraController::class, 'muteUser']);
         Route::post('/agora/kick', [AgoraController::class, 'kickUser']);
         Route::get('/agora/participants/{channelName}', [AgoraController::class, 'getParticipants']);
-        
+        Route::post('/agora/disable-video', [AgoraController::class, 'disableVideo']);
         // إنشاء الاجتماع
         Route::post('/admin/create-meet', [AdminController::class, 'createMeet']);
         Route::post('/admin/meetings/send-emails/{meeting}', [AdminController::class, 'sendMeetEmails']);

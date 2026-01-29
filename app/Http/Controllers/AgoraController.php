@@ -66,79 +66,54 @@ class AgoraController extends Controller
         'participants' => $participants
     ]);
 }
-    /**
-     * عرض البث المباشر للقناة    // إذا لم يوجد آدمن بعد، يصبح هذا المستخدم أول آدمن
-     */
-    public function getJoinData(Request $request, $channelName)
-{
-    // 1. الحصول على المستخدم من التوكن
-    $user = auth('api')->user();
 
-    // 2. التحقق الصارم من الهوية
+public function getJoinData(Request $request, $channelName)
+{
+    $user = auth('api')->user();
     if (!$user) {
         return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
     }
 
-   // $uid = $user->id;
- //  $uid = crc32($user->id . microtime());
+    // الحل: استخدم الـ ID الحقيقي للمستخدم ليكون هو الـ UID أو اشتق منه رقم ثابت
+    // أغورا تقبل فقط أرقام، لذا نستخدم ID المستخدم مباشرة
+    $uid = $user->id; 
 
-    $uid = random_int(1, 2000000000);
-
-    // 3. تحديد هل هو أدمن بناءً على قاعدة البيانات (وليس أسبقية الدخول)
-    // نفترض أن عندك حقل في جدول المستخدمين اسمه role
     $isAdmin = ($user->role === 'admin'); 
-
-    $adminKey = "channel-admin-" . $channelName;
     $participantsKey = "channel-participants-" . $channelName;
 
-    // 4. إدارة مفتاح الأدمن في الكاش
-    // إذا كان المستخدم الحالي أدمن، نقوم بتحديث الكاش للتأكيد أن الأدمن متواجد
-    if ($isAdmin) {
-        Cache::put($adminKey, $uid, now()->addHours(2));
+    $participants = Cache::get($participantsKey, []);
+
+    // إذا كان المستخدم مطروداً سابقاً، امنعه من الدخول
+    if (isset($participants[$uid]) && isset($participants[$uid]['kicked']) && $participants[$uid]['kicked']) {
+         return response()->json(['status' => false, 'message' => 'You are kicked from this session'], 403);
     }
 
-    // 5. تحديث قائمة المشاركين
-    $participants = Cache::get($participantsKey, []);
+    // تحديث أو إضافة المستخدم (سيقوم بعمل Override لنفس المفتاح، مما يمنع التكرار)
     $participants[$uid] = [
         'uid' => $uid,
         'name' => $user->name,
         'isAdmin' => $isAdmin,
-        'role' => $user->role, // إضافة الدور لسهولة التعامل في فرونت إند
-        'raisedHand' => false,
-        'isMuted' => false,
-        'videoEnabled' => true,
+        'isMuted' => $participants[$uid]['isMuted'] ?? false, // الحفاظ على حالة الكتم لو عمل Refresh
+        'videoEnabled' => $participants[$uid]['videoEnabled'] ?? true,
+        'kicked' => false,
         'joinedAt' => now()->toDateTimeString()
     ];
+
     Cache::put($participantsKey, $participants, now()->addHours(2));
 
     try {
-        /**
-         * 6. توليد التوكن مع الصلاحيات (Privileges)
-         * الأفضل تعديل دالة generateToken لتقبل Role:
-         * الأدمن (Publisher) = يستطيع فتح الكاميرا والمايك
-         * الطالب (Subscriber) = يشاهد ويسمع فقط حتى يأذن له الأدمن
-         */
-        $role = $isAdmin ? 1 : 2; // 1: Host/Publisher, 2: Subscriber
-        
-        // تأكد من تحديث دالة generateToken في AgoraService لتقبل هذا المتغير
-       // $token = $this->agora->generateToken($channelName, $uid, $role);
-$token = $this->agora->generateToken($channelName, $uid, 3600);
-
+        $token = $this->agora->generateToken($channelName, $uid, 3600);
         return response()->json([
             'status' => true,
             'appId' => config('services.agora.app_id'),
             'token' => $token,
             'channelName' => $channelName,
             'uid' => $uid,
-            'isAdmin' => $isAdmin, // سيعرف React الآن يقيناً هل يظهر أدوات التحكم أم لا
-            'participants' => $participants,
-            'serverTime' => now()->toDateTimeString()
+            'isAdmin' => $isAdmin,
+            'participants' => $participants
         ]);
-
     } catch (\Throwable $e) {
-        // تسجيل الخطأ للمطور ولكن إرجاع رسالة بسيطة للمستخدم
-        \Log::error("Agora Token Error: " . $e->getMessage());
-        return response()->json(['status' => false, 'message' => 'Failed to join the session'], 500);
+        return response()->json(['status' => false, 'message' => 'Token Error'], 500);
     }
 }
     /**
@@ -168,6 +143,11 @@ $token = $this->agora->generateToken($channelName, $uid, 3600);
      */
     public function muteUser(Request $request)
     {
+        $user = auth('api')->user();
+        if (!$user || $user->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $channelName = $request->channel;
         $targetUid = $request->targetUid;
         $muteAll = $request->boolean('muteAll', false);
@@ -177,7 +157,7 @@ $token = $this->agora->generateToken($channelName, $uid, 3600);
         
         if ($muteAll) {
             foreach ($participants as $uid => $data) {
-                if (!$data['isAdmin']) {
+                if (isset($data['isAdmin']) && !$data['isAdmin']) {
                     $participants[$uid]['isMuted'] = true;
                 }
             }
@@ -186,8 +166,7 @@ $token = $this->agora->generateToken($channelName, $uid, 3600);
         }
         
         Cache::put($participantsKey, $participants, now()->addHours(2));
-        
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'participants' => $participants]);
     }
 
     /**
@@ -220,8 +199,13 @@ $token = $this->agora->generateToken($channelName, $uid, 3600);
     /**
      * API لطرد مستخدم
      */
-    public function kickUser(Request $request)
+   public function kickUser(Request $request)
     {
+        $user = auth('api')->user();
+        if (!$user || $user->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $channelName = $request->channel;
         $targetUid = $request->targetUid;
         
@@ -229,11 +213,16 @@ $token = $this->agora->generateToken($channelName, $uid, 3600);
         $participants = Cache::get($participantsKey, []);
         
         if (isset($participants[$targetUid])) {
-            unset($participants[$targetUid]);
+            // ملاحظة هامة: لا نحذف المستخدم فوراً
+            // نضع علامة "مطرود" لكي يراها تطبيق الطالب في الـ Polling القادم
+            $participants[$targetUid]['kicked'] = true;
             Cache::put($participantsKey, $participants, now()->addHours(2));
+            
+            // اختيارياً: يمكنك استخدام وظيفة مجدولة لحذفه نهائياً من الكاش بعد دقيقة
+            return response()->json(['success' => true, 'message' => 'User marked for kick']);
         }
         
-        return response()->json(['success' => true]);
+        return response()->json(['success' => false, 'message' => 'User not found']);
     }
 
     /**
