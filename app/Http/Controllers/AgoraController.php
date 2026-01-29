@@ -76,7 +76,7 @@ public function getJoinData(Request $request, $channelName)
 
     // الحل: استخدم الـ ID الحقيقي للمستخدم ليكون هو الـ UID أو اشتق منه رقم ثابت
     // أغورا تقبل فقط أرقام، لذا نستخدم ID المستخدم مباشرة
-    $uid = $user->id; 
+    $uid = (int) ($user->id . rand(10, 99)); 
 
     $isAdmin = ($user->role === 'admin'); 
     $participantsKey = "channel-participants-" . $channelName;
