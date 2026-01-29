@@ -74,48 +74,62 @@ public function getJoinData(Request $request, $channelName)
         return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
     }
 
-    // الحل: استخدم الـ ID الحقيقي للمستخدم ليكون هو الـ UID أو اشتق منه رقم ثابت
-    // أغورا تقبل فقط أرقام، لذا نستخدم ID المستخدم مباشرة
-    $uid = (int) ($user->id . rand(10, 99)); 
-
     $isAdmin = ($user->role === 'admin'); 
     $participantsKey = "channel-participants-" . $channelName;
 
+    // جلب المشاركين الحاليين من الكاش
     $participants = Cache::get($participantsKey, []);
 
-    // إذا كان المستخدم مطروداً سابقاً، امنعه من الدخول
-    if (isset($participants[$uid]) && isset($participants[$uid]['kicked']) && $participants[$uid]['kicked']) {
-         return response()->json(['status' => false, 'message' => 'You are kicked from this session'], 403);
+    $user_id = $user->id;
+
+    //  توليد UID جديد لكل دخول لأغورا (لتجنب تضارب UID)
+    $agoraUid = rand(10000, 99999);
+
+    //  تنظيف المشاركين القدماء (لم ينضموا منذ أكثر من 24 ساعة)
+    foreach ($participants as $id => $p) {
+        if (strtotime($p['joinedAt']) < now()->subHours(24)->timestamp) {
+            unset($participants[$id]);
+        }
     }
 
-    // تحديث أو إضافة المستخدم (سيقوم بعمل Override لنفس المفتاح، مما يمنع التكرار)
-    $participants[$uid] = [
-        'uid' => $uid,
+    //  التحقق من الطرد باستخدام user_id الثابت
+    if (isset($participants[$user_id]) && ($participants[$user_id]['kicked'] ?? false)) {
+        return response()->json(['status' => false, 'message' => 'You are kicked from this session'], 403);
+    }
+
+    //  تحديث بيانات المستخدم في الكاش
+    $participants[$user_id] = [
+        'uid' => $agoraUid, // UID جديد لكل دخول
         'name' => $user->name,
         'isAdmin' => $isAdmin,
-        'isMuted' => $participants[$uid]['isMuted'] ?? false, // الحفاظ على حالة الكتم لو عمل Refresh
-        'videoEnabled' => $participants[$uid]['videoEnabled'] ?? true,
+        'isMuted' => $participants[$user_id]['isMuted'] ?? false,
+        'videoEnabled' => $participants[$user_id]['videoEnabled'] ?? true,
         'kicked' => false,
         'joinedAt' => now()->toDateTimeString()
     ];
 
-    Cache::put($participantsKey, $participants, now()->addHours(2));
+    //  تخزين الكاش لمدة 24 ساعة
+    Cache::put($participantsKey, $participants, now()->addHours(24));
 
+    // توليد توكن أغورا
     try {
-        $token = $this->agora->generateToken($channelName, $uid, 3600);
-        return response()->json([
-            'status' => true,
-            'appId' => config('services.agora.app_id'),
-            'token' => $token,
-            'channelName' => $channelName,
-            'uid' => $uid,
-            'isAdmin' => $isAdmin,
-            'participants' => $participants
-        ]);
+        $token = $this->agora->generateToken($channelName, $agoraUid, 3600);
     } catch (\Throwable $e) {
-        return response()->json(['status' => false, 'message' => 'Token Error'], 500);
+        return response()->json(['status' => false, 'message' => 'Token Error: ' . $e->getMessage()], 500);
     }
+
+    //  إعادة البيانات للواجهة
+    return response()->json([
+        'status' => true,
+        'appId' => config('services.agora.app_id'),
+        'token' => $token,
+        'channelName' => $channelName,
+        'uid' => $agoraUid,
+        'isAdmin' => $isAdmin,
+        'participants' => $participants
+    ]);
 }
+
     /**
      * API لرفع اليد
      */
