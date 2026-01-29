@@ -82,8 +82,11 @@ public function getJoinData(Request $request, $channelName)
 
     $user_id = $user->id;
 
-    //  توليد UID جديد لكل دخول لأغورا (لتجنب تضارب UID)
-    $agoraUid = rand(10000, 99999);
+   if (isset($participants[$user_id]['uid'])) {
+        $agoraUid = $participants[$user_id]['uid'];
+    } else {
+        $agoraUid = rand(10000, 99999); 
+    }
 
     //  تنظيف المشاركين القدماء (لم ينضموا منذ أكثر من 24 ساعة)
     foreach ($participants as $id => $p) {
