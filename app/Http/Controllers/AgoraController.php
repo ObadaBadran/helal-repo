@@ -163,25 +163,45 @@ public function getJoinData(Request $request, $channelName)
     }
 
     $channelName = $request->channel;
-    $targetUserId = $request->targetUserId; // غيرنا التسمية لـ UserId لضمان الوضوح
+    $targetAgoraUid = $request->uid; // القيمة المطلوبة هنا هي رقم أغورا (مثلاً 88274)
     $muteAll = $request->boolean('muteAll', false);
-    $action = $request->get('action', 'mute'); // إضافة خيار لإلغاء المكتوم (unmute)
+    $action = $request->get('action', 'mute'); 
 
     $participantsKey = "channel-participants-" . $channelName;
     $participants = Cache::get($participantsKey, []);
 
     if ($muteAll) {
+        // كتم الجميع
         foreach ($participants as $id => $data) {
             if (isset($data['isAdmin']) && !$data['isAdmin']) {
                 $participants[$id]['isMuted'] = ($action === 'mute');
             }
         }
-    } elseif ($targetUserId && isset($participants[$targetUserId])) {
-        $participants[$targetUserId]['isMuted'] = ($action === 'mute');
+    } elseif ($targetAgoraUid) {
+        // البحث عن المستخدم الذي يملك هذا الـ UID داخل المصفوفة
+        $found = false;
+        foreach ($participants as $id => $data) {
+            if (isset($data['uid']) && $data['uid'] == $targetAgoraUid) {
+                $participants[$id]['isMuted'] = ($action === 'mute');
+                $found = true;
+                break; // وجدناه، نخرج من الحلقة
+            }
+        }
+
+        if (!$found) {
+            return response()->json(['success' => false, 'message' => 'UID not found in this channel'], 404);
+        }
+    } else {
+        return response()->json(['success' => false, 'message' => 'Missing UID or muteAll parameter'], 400);
     }
 
     Cache::put($participantsKey, $participants, now()->addHours(24));
-    return response()->json(['success' => true, 'participants' => $participants]);
+    
+    return response()->json([
+        'success' => true, 
+        'message' => ($muteAll ? "All users " : "User ") . ($action === 'mute' ? "muted" : "unmuted"),
+        'participants' => $participants
+    ]);
 }
     /**
      * API لإيقاف كاميرا مستخدم محدد أو للكل
@@ -213,7 +233,7 @@ public function getJoinData(Request $request, $channelName)
     /**
      * API لطرد مستخدم
      */
-  public function kickUser(Request $request)
+ public function kickUser(Request $request)
 {
     // 1. التحقق من صلاحية الأدمن
     $admin = auth('api')->user();
@@ -221,29 +241,44 @@ public function getJoinData(Request $request, $channelName)
         return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
     }
 
-    // 2. التحقق من البيانات المرسلة
     $request->validate([
         'channel' => 'required|string',
-        'targetUserId' => 'required' // هنا نطلب الـ ID الحقيقي للمستخدم (الموجود في الكاش كمفتاح)
+        'uid' => 'required' 
     ]);
 
     $channelName = $request->channel;
-    $targetUserId = $request->targetUserId;
+    $targetAgoraUid = $request->uid; 
     
     $participantsKey = "channel-participants-" . $channelName;
     $participants = Cache::get($participantsKey, []);
     
-    // 3. البحث عن المستخدم في الكاش باستخدام الـ Key (User ID)
-    if (isset($participants[$targetUserId])) {
-        // نضع علامة الطرد
-        $participants[$targetUserId]['kicked'] = true;
-        
-        // تحديث الكاش (نحتفظ به لمدة 24 ساعة لضمان عدم تمكنه من الدخول مرة أخرى)
+    $found = false;
+
+    // 2. البحث عن المستخدم وحماية الأدمن
+    foreach ($participants as $userId => $data) {
+        if (isset($data['uid']) && $data['uid'] == $targetAgoraUid) {
+            
+            // --- الإضافة الأمنية: منع الأدمن من طرد نفسه ---
+            if (isset($data['isAdmin']) && $data['isAdmin'] === true) {
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Error: You cannot kick an admin from the session.'
+                ], 400);
+            }
+            // ------------------------------------------
+
+            $participants[$userId]['kicked'] = true;
+            $found = true;
+            break; 
+        }
+    }
+
+    if ($found) {
         Cache::put($participantsKey, $participants, now()->addHours(24));
         
         return response()->json([
             'success' => true, 
-            'message' => 'User (ID: '.$targetUserId.') has been kicked successfully.'
+            'message' => 'User with Agora UID: ' . $targetAgoraUid . ' has been kicked successfully.'
         ]);
     }
     
