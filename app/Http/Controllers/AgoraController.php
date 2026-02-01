@@ -155,37 +155,34 @@ public function getJoinData(Request $request, $channelName)
         return response()->json(['success' => false]);
     }
 
-    /**
-     * API لعمل Mute للكل أو لمستخدم محدد
-     */
-    public function muteUser(Request $request)
-    {
-        $user = auth('api')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $channelName = $request->channel;
-        $targetUid = $request->targetUid;
-        $muteAll = $request->boolean('muteAll', false);
-        
-        $participantsKey = "channel-participants-" . $channelName;
-        $participants = Cache::get($participantsKey, []);
-        
-        if ($muteAll) {
-            foreach ($participants as $uid => $data) {
-                if (isset($data['isAdmin']) && !$data['isAdmin']) {
-                    $participants[$uid]['isMuted'] = true;
-                }
-            }
-        } elseif ($targetUid && isset($participants[$targetUid])) {
-            $participants[$targetUid]['isMuted'] = true;
-        }
-        
-        Cache::put($participantsKey, $participants, now()->addHours(2));
-        return response()->json(['success' => true, 'participants' => $participants]);
+   public function muteUser(Request $request)
+{
+    $user = auth('api')->user();
+    if (!$user || $user->role !== 'admin') {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
     }
 
+    $channelName = $request->channel;
+    $targetUserId = $request->targetUserId; // غيرنا التسمية لـ UserId لضمان الوضوح
+    $muteAll = $request->boolean('muteAll', false);
+    $action = $request->get('action', 'mute'); // إضافة خيار لإلغاء المكتوم (unmute)
+
+    $participantsKey = "channel-participants-" . $channelName;
+    $participants = Cache::get($participantsKey, []);
+
+    if ($muteAll) {
+        foreach ($participants as $id => $data) {
+            if (isset($data['isAdmin']) && !$data['isAdmin']) {
+                $participants[$id]['isMuted'] = ($action === 'mute');
+            }
+        }
+    } elseif ($targetUserId && isset($participants[$targetUserId])) {
+        $participants[$targetUserId]['isMuted'] = ($action === 'mute');
+    }
+
+    Cache::put($participantsKey, $participants, now()->addHours(24));
+    return response()->json(['success' => true, 'participants' => $participants]);
+}
     /**
      * API لإيقاف كاميرا مستخدم محدد أو للكل
      */
@@ -216,32 +213,42 @@ public function getJoinData(Request $request, $channelName)
     /**
      * API لطرد مستخدم
      */
-   public function kickUser(Request $request)
-    {
-        $user = auth('api')->user();
-        if (!$user || $user->role !== 'admin') {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $channelName = $request->channel;
-        $targetUid = $request->targetUid;
-        
-        $participantsKey = "channel-participants-" . $channelName;
-        $participants = Cache::get($participantsKey, []);
-        
-        if (isset($participants[$targetUid])) {
-            // ملاحظة هامة: لا نحذف المستخدم فوراً
-            // نضع علامة "مطرود" لكي يراها تطبيق الطالب في الـ Polling القادم
-            $participants[$targetUid]['kicked'] = true;
-            Cache::put($participantsKey, $participants, now()->addHours(2));
-            
-            // اختيارياً: يمكنك استخدام وظيفة مجدولة لحذفه نهائياً من الكاش بعد دقيقة
-            return response()->json(['success' => true, 'message' => 'User marked for kick']);
-        }
-        
-        return response()->json(['success' => false, 'message' => 'User not found']);
+  public function kickUser(Request $request)
+{
+    // 1. التحقق من صلاحية الأدمن
+    $admin = auth('api')->user();
+    if (!$admin || $admin->role !== 'admin') {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
     }
 
+    // 2. التحقق من البيانات المرسلة
+    $request->validate([
+        'channel' => 'required|string',
+        'targetUserId' => 'required' // هنا نطلب الـ ID الحقيقي للمستخدم (الموجود في الكاش كمفتاح)
+    ]);
+
+    $channelName = $request->channel;
+    $targetUserId = $request->targetUserId;
+    
+    $participantsKey = "channel-participants-" . $channelName;
+    $participants = Cache::get($participantsKey, []);
+    
+    // 3. البحث عن المستخدم في الكاش باستخدام الـ Key (User ID)
+    if (isset($participants[$targetUserId])) {
+        // نضع علامة الطرد
+        $participants[$targetUserId]['kicked'] = true;
+        
+        // تحديث الكاش (نحتفظ به لمدة 24 ساعة لضمان عدم تمكنه من الدخول مرة أخرى)
+        Cache::put($participantsKey, $participants, now()->addHours(24));
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'User (ID: '.$targetUserId.') has been kicked successfully.'
+        ]);
+    }
+    
+    return response()->json(['success' => false, 'message' => 'User not found in this channel'], 404);
+}
     /**
      * API للحصول على المشاركين (للأدمن فقط)
      */
