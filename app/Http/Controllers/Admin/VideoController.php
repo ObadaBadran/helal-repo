@@ -9,6 +9,8 @@ use App\PaginationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
+use Illuminate\Support\Facades\Storage;
+
 
 class VideoController extends Controller
 {
@@ -45,7 +47,7 @@ class VideoController extends Controller
                         'title' => $video->title,
                         'subTitle' => $video->subTitle,
                         'description' => $video->description,
-                        'path' => $video->path ? asset($video->path) : null,
+                        'path' => $video->path ? Storage::disk('s3')->url($video->path) : null,
                         'youtube_path' => $video->youtube_path,
                         'cover' => $video->cover ? asset($video->cover) : null,
                     ];
@@ -91,9 +93,8 @@ class VideoController extends Controller
             // تخزين الفيديو
             if ($request->hasFile('path')) {
                 $videoFile = $request->file('path');
-                $videoName = uniqid('video_') . '.' . $videoFile->getClientOriginalExtension();
-                $videoFile->move(public_path('videos'), $videoName);
-                $validatedData['path'] = 'videos/' . $videoName;
+                $path = $videoFile->store('videos', 's3');
+                $validatedData['path'] = $path;
             }
 
             // تخزين الغلاف
@@ -106,18 +107,9 @@ class VideoController extends Controller
 
             $video = Video::create($validatedData);
 
-            if ($video->cover) {
-                $video->cover = asset($video->cover);
-            }
-
-            if ($video->path) {
-                $video->path = asset($video->path);
-            }
-
             return response()->json([
                 'status' => 'success',
-                'message' => 'Video created successfully',
-                'video' => $video
+                'message' => 'Video created successfully'
             ], 201);
         } catch (Exception $e) {
             return response()->json([
@@ -146,13 +138,12 @@ class VideoController extends Controller
             ]);
 
             if ($request->hasFile('path')) {
-                if ($video->path && file_exists(public_path($video->path))) {
-                    unlink(public_path($video->path));
+                if ($video->path && Storage::disk('s3')->exists($video->path)) {
+                    Storage::disk('s3')->delete($video->path);
                 }
                 $videoFile = $request->file('path');
-                $videoName = uniqid('video_') . '.' . $videoFile->getClientOriginalExtension();
-                $videoFile->move(public_path('videos'), $videoName);
-                $validatedData['path'] = 'videos/' . $videoName;
+                $path = $videoFile->store('videos', 's3');
+                $validatedData['path'] = $path;
             }
 
             if ($request->hasFile('cover')) {
@@ -166,20 +157,10 @@ class VideoController extends Controller
             }
 
             $video->update($validatedData);
-            
-            if ($video->cover) {
-                $video->cover = asset($video->cover);
-            }
-
-            if ($video->path) {
-                $video->path = asset($video->path);
-            }
-
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Video updated successfully',
-                'video' => $video
+                'message' => 'Video updated successfully'
             ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -200,8 +181,8 @@ class VideoController extends Controller
         try {
             $video = Video::findOrFail($id);
 
-            if ($video->path && file_exists(public_path($video->path))) {
-                unlink(public_path($video->path));
+            if ($video->path && Storage::disk('s3')->exists($video->path)) {
+                Storage::disk('s3')->delete($video->path);
             }
 
             if ($video->cover && file_exists(public_path($video->cover))) {
@@ -255,7 +236,7 @@ class VideoController extends Controller
                 'title' => $video->title,
                 'subTitle' => $video->subTitle,
                 'description' => $video->description,
-                'path' => $video->path ? asset($video->path) : null,
+                'path' => $video->path ? Storage::disk('s3')->url($video->path) : null,
                 'youtube_path' => $video->youtube_path,
                 'cover' => $video->cover ? asset($video->cover) : null,
                 'created_at' => $video->created_at,
