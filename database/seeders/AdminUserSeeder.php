@@ -14,12 +14,12 @@ class AdminUserSeeder extends Seeder
     public function run(): void
     {
         // تحقق إن كان يوجد أدمن مسبقاً
-        if (!User::where('email', 'helal@gmail.com')->exists()) {
+        if (!User::where('email', 'He779@tikit.ae')->exists()) {
             User::create([
                 'name' => 'Helal Aljaberi',
-                'email' => 'helal@gmail.com',
-                'phone_number' => '0999999999',
-                'password' => Hash::make('helal@779'), // يمكنك تغييره
+                'email' => 'He779@tikit.ae',
+                'phone_number' => '+971503338444',
+                'password' => Hash::make('Helal@123'), // يمكنك تغييره
                 'role' => 'admin',
                 'otp_verified' => true,
             ]);
