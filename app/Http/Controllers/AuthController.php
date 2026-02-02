@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class AuthController extends Controller
 {
@@ -311,7 +313,7 @@ class AuthController extends Controller
 
     // رفع الصورة الجديدة مباشرة داخل public/profile-images
     $imageFile = $request->file('profile_image');
-    $imageName = uniqid('profile_') . '.' . $imageFile->getClientOriginalExtension();
+    $imageName = uniqid('profile_') . '.webp'; 
     $destinationPath = public_path('profile-images');
 
     // إنشاء المجلد إذا لم يكن موجودًا
@@ -319,7 +321,12 @@ class AuthController extends Controller
         mkdir($destinationPath, 0755, true);
     }
 
-    $imageFile->move($destinationPath, $imageName);
+   $manager = new ImageManager(new Driver());
+
+// قراءة الصورة
+$img = $manager->read($imageFile);
+// تحويل الصورة لـ Webp وحفظها
+$img->toWebp(80)->save($destinationPath.'/'.$imageName);
 
     // حفظ المسار في قاعدة البيانات
     $user->update(['profile_image' => 'profile-images/' . $imageName]);

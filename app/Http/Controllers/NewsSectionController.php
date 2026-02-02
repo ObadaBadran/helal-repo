@@ -22,7 +22,7 @@ class NewsSectionController extends Controller
                 ->paginate($perPage, ['*'], 'page', $page);
 
             $data = $sections->map(function ($section) use ($lang) {
-                $images = $section->images->map(fn($img) => url($img->image));
+                $images = $section->images->map(fn($img) => asset($img->image));
 
                 return [
                     'id' => $section->id,
@@ -33,9 +33,7 @@ class NewsSectionController extends Controller
                 ];
             });
 
-            if ($data->isEmpty()) {
-                return response()->json(['message' => 'No news sections found.'], 404);
-            }
+           
 
             return response()->json([
                 'status' => true,
@@ -58,7 +56,7 @@ class NewsSectionController extends Controller
         try {
             $lang = $request->query('lang', 'en');
             $section = NewsSection::with('images')->findOrFail($id);
-            $images = $section->images->map(fn($img) => url($img->image));
+            $images = $section->images->map(fn($img) => asset($img->image));
 
             return response()->json([
                 'id' => $section->id,
@@ -101,7 +99,7 @@ class NewsSectionController extends Controller
                         'image' => 'news_images/' . $imageName,
                     ]);
 
-                    $imagePaths[] = url('news_images/' . $imageName);
+                    $imagePaths[] = asset('news_images/' . $imageName);
                 }
             }
 
@@ -168,7 +166,7 @@ class NewsSectionController extends Controller
             }
 
             $newsSection->load('images');
-            $imagePaths = $newsSection->images->map(fn($img) => url($img->image))->toArray();
+            $imagePaths = $newsSection->images->map(fn($img) => asset($img->image))->toArray();
 
             return response()->json([
                 'status' => true,

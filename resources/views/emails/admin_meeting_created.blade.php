@@ -142,8 +142,19 @@
     <div class="section-title">Invited Users</div>
 
     <div class="user-list">
-        {{ implode("\n", $users->pluck('name')->toArray()) }}
-    </div>
+@php
+    $userNames = isset($users)
+        ? $users->pluck('name')->toArray()
+        : [];
+@endphp
+
+@if(count($userNames))
+    {{ implode("\n", $userNames) }}
+@else
+    No users assigned.
+@endif
+</div>
+
 
 </div>
 

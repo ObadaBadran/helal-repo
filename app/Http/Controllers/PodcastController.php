@@ -26,7 +26,7 @@ class PodcastController extends Controller
                     'title' => $lang === 'ar' ? $podcast->title_ar : $podcast->title_en,
                     'description' => $lang === 'ar' ? $podcast->description_ar : $podcast->description_en,
                     'youtube_link' => $podcast->youtube_link,
-                    'cover' => $podcast->cover ? url($podcast->cover) : null,
+                    'cover' => $podcast->cover ? asset($podcast->cover) : null,
                     'created_at' => $podcast->created_at,
                     'updated_at' => $podcast->updated_at,
                 ];
@@ -60,7 +60,7 @@ class PodcastController extends Controller
                 'title' => $lang === 'ar' ? $podcast->title_ar : $podcast->title_en,
                 'description' => $lang === 'ar' ? $podcast->description_ar : $podcast->description_en,
                 'youtube_link' => $podcast->youtube_link,
-                'cover' => $podcast->cover ? url($podcast->cover) : null,
+                'cover' => $podcast->cover ? asset($podcast->cover) : null,
                 'created_at' => $podcast->created_at,
                 'updated_at' => $podcast->updated_at,
             ]);
@@ -95,7 +95,7 @@ class PodcastController extends Controller
         $podcast = Podcast::create(array_merge($data, ['cover' => $coverPath]));
 
         // تعديل الرابط ليكون كامل
-        $podcast->cover = $podcast->cover ? url($podcast->cover) : null;
+        $podcast->cover = $podcast->cover ? asset($podcast->cover) : null;
 
         return response()->json([
             'status' => true,
@@ -137,7 +137,7 @@ class PodcastController extends Controller
         $podcast->update($data);
 
         // تعديل الرابط ليكون كامل
-        $podcast->cover = $podcast->cover ? url($podcast->cover) : null;
+        $podcast->cover = $podcast->cover ? asset($podcast->cover) : null;
 
         return response()->json([
             'status' => true,
