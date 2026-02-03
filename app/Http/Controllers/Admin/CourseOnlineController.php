@@ -131,7 +131,7 @@ class CourseOnlineController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Agora channel created and emails sent successfully.',
+            'message' => 'Meeting channel created and emails sent successfully.',
             'data' => [
                 'course_id' => $course->id,
                 'channel_name' => $channelName,
@@ -143,7 +143,7 @@ class CourseOnlineController extends Controller
     } catch (Exception $e) {
         return response()->json([
             'status' => false,
-            'message' => 'Failed to process Agora meeting.',
+            'message' => 'Failed to process meeting.',
             'error' => $e->getMessage()
         ], 500);
     }
