@@ -313,14 +313,15 @@ class AdminController extends Controller
             'duration' => 'required|integer|min:1',
         ]);
 
-        // توليد اسم قناة فريد لـ Agora
-        $channelName = 'course_' . Str::random(10);
+        $userId = auth('api')->id();
+        $dateTime = now()->format('YmdHis');
+        $channelName = "meeting_{$userId}_{$dateTime}"; 
 
         $meeting = Meeting::create([
             'summary' => $validated['summary'],
             'start_time' => $validated['start_time'],
             'duration' => $validated['duration'],
-            'meet_url' => $channelName, // نخزن هنا اسم القناة لاستخدامه في التوكن لاحقاً
+            'meet_url' => $channelName, 
         ]);
 
         return response()->json([

@@ -13,9 +13,17 @@ use Tymon\JWTAuth\Facades\JWTAuth;
 use Carbon\Carbon;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+use App\Services\FirebaseService;
 
 class AuthController extends Controller
 {
+    protected $firebaseService;
+
+    public function __construct(FirebaseService $firebaseService)
+    {
+        $this->firebaseService = $firebaseService;
+    }
+
     // Register a new user
     public function register(Request $request)
     {
@@ -32,6 +40,7 @@ class AuthController extends Controller
                 'confirmed',
             ],
             'role' => 'in:admin,user',
+            'fcmToken' => 'required|string',
         ], [
             'name.required' => 'Name is required.',
             'email.required' => 'Email is required.',
@@ -44,6 +53,7 @@ class AuthController extends Controller
             'password.regex' => 'Password must contain uppercase, lowercase, number, and special character.',
             'password.confirmed' => 'Password confirmation does not match.',
             'role.in' => 'Role must be either admin or user.',
+            'fcmToken.required' => 'fcmToken is required.',
         ]);
 
         if ($validator->fails()) {
@@ -60,6 +70,7 @@ class AuthController extends Controller
             'phone_number' => $request->phone_number,
             'password' => Hash::make($request->password),
             'role' => $request->role ?? 'user',
+            'fcm_token' => $request->fcmToken,
         ]);
 
         $token = auth()->guard('api')->login($user);
@@ -79,10 +90,12 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string',
+            'fcmToken' => 'required|string',
         ], [
             'email.required' => 'Email is required.',
             'email.email' => 'Email format is invalid.',
             'password.required' => 'Password is required.',
+            'fcmToken.required' => 'fcmToken is required.',
         ]);
 
         if ($validator->fails()) {
@@ -95,19 +108,23 @@ class AuthController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Email or password is incorrect.'], 401);
         }
 
-        // $token = $user->role === 'admin'
-        //     ? JWTAuth::claims(['role' => 'admin'])->setTTL(525600)->login($user)
-        //     : auth()->guard('api')->login($user);
-          if ($user->role === 'admin') {
-        // للأدمن سنة واحدة كما قبل
-        config(['jwt.ttl' => 525600]); // دقيقة
-    } else {
-        // للمستخدم شهر واحد
-        config(['jwt.ttl' => 43200]); // دقيقة → 30 يوم * 24 ساعة * 60 دقيقة = 43200 دقيقة
-    }
+        // Update FCM Token
+        $user->update(['fcm_token' => $request->fcmToken]);
+
+        // Send self-notification
+        $this->firebaseService->sendNotification(
+            $request->fcmToken,
+            'Login Successful',
+            "Welcome back, {$user->name}! You have successfully logged in."
+        );
+
+        if ($user->role === 'admin') {
+            config(['jwt.ttl' => 525600]);
+        } else {
+            config(['jwt.ttl' => 43200]);
+        }
 
         $token = JWTAuth::claims(['role' => $user->role])->fromUser($user);
-
 
         return $this->respondWithToken($token, $user);
     }

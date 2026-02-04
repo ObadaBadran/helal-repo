@@ -23,23 +23,6 @@ use App\Http\Controllers\AgoraController;
 use Illuminate\Support\Facades\Mail;
 
 
-Route::middleware('auth.api')->group(function () {
-    
-    // الطلاب والأدمن للحصول على توكن الدخول
-    Route::get('/agora/join/{channelName}', [AgoraController::class, 'getJoinData']);
-    Route::post('/agora/raise-hand', [AgoraController::class, 'raiseHand']);
-
-    // صلاحيات الأدمن فقط
-    Route::middleware('admin')->group(function () {
-        Route::post('/agora/mute', [AgoraController::class, 'muteUser']);
-        Route::post('/agora/kick', [AgoraController::class, 'kickUser']);
-        Route::get('/agora/participants/{channelName}', [AgoraController::class, 'getParticipants']);
-        Route::post('/agora/disable-video', [AgoraController::class, 'disableVideo']);
-        // إنشاء الاجتماع
-        Route::post('/admin/create-meet', [AdminController::class, 'createMeet']);
-        Route::post('/admin/meetings/send-emails/{meeting}', [AdminController::class, 'sendMeetEmails']);
-    });
-});
 
 Route::post('/admin/send-meet-emails/{meeting}', [AdminController::class, 'sendMeetEmails'])->middleware('admin');
 
@@ -52,6 +35,17 @@ Route::middleware('auth.api')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::post('/update-profile-image', [AuthController::class, 'updateProfileImage']);
+});
+
+Route::middleware(['auth.api', 'admin'])->group(function () {
+    Route::post('/agora/mute/user', [AgoraController::class, 'muteUser']);
+    Route::post('/agora/mute/all', [AgoraController::class, 'muteAll']);
+    Route::post('/agora/kick/user', [AgoraController::class, 'kickUser']);
+});
+
+Route::middleware('auth.api')->group(function () {
+    Route::post('/agora/token', [AgoraController::class, 'generateToken']);
+    Route::post('/agora/session/end', [AgoraController::class, 'endSession']);
 });
 Route::post('/send-otp', [AuthController::class, 'sendOtp']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
