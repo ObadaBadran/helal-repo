@@ -19,6 +19,7 @@ use App\Http\Controllers\User\AppointmentController;
 use App\Http\Controllers\PrivateLessonInformationController;
 use App\Http\Controllers\PrivateLessonController;
 use App\Http\Controllers\PodcastController;
+use App\Http\Controllers\AgoraController;
 use Illuminate\Support\Facades\Mail;
 
 
@@ -34,6 +35,17 @@ Route::middleware('auth.api')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::post('/update-profile-image', [AuthController::class, 'updateProfileImage']);
+});
+
+Route::middleware(['auth.api', 'admin'])->group(function () {
+    Route::post('/agora/mute/user', [AgoraController::class, 'muteUser']);
+    Route::post('/agora/mute/all', [AgoraController::class, 'muteAll']);
+    Route::post('/agora/kick/user', [AgoraController::class, 'kickUser']);
+});
+
+Route::middleware('auth.api')->group(function () {
+    Route::post('/agora/token', [AgoraController::class, 'generateToken']);
+    Route::post('/agora/session/end', [AgoraController::class, 'endSession']);
 });
 Route::post('/send-otp', [AuthController::class, 'sendOtp']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);

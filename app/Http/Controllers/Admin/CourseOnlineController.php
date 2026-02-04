@@ -90,10 +90,9 @@ class CourseOnlineController extends Controller
    {
     try {
         
-        $channelName = $request->input('meet_url');
-        if (!$channelName) {
-            $channelName = 'course_live_' . Str::random(10);
-        }
+        $adminId = auth('api')->id();
+        $dateTime = now()->format('YmdHis');
+        $channelName = "course_live_{$adminId}_{$course->id}_{$dateTime}";    
 
         $enrolledUsers = $course->enrolls()
             ->where('payment_status', 'paid')
@@ -111,8 +110,7 @@ class CourseOnlineController extends Controller
 
         
         $course->update([
-            'meet_url' => $channelName, 
-           
+            'meet_url' => $channelName,            
         ]);
 
        

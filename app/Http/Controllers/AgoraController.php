@@ -1,0 +1,359 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Yasser\Agora\RtcTokenBuilder;
+use Illuminate\Support\Facades\Auth;
+use Exception;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Cache;
+use App\Models\User;
+use App\Services\FirebaseService;
+
+class AgoraController extends Controller
+{
+    protected $firebaseService;
+
+    public function __construct(FirebaseService $firebaseService)
+    {
+        $this->firebaseService = $firebaseService;
+    }
+
+    public function generateToken(Request $request)
+    {
+        try {
+            $request->validate([
+                'channelName' => 'required|string',
+            ]);
+
+            $appID = config('services.agora.app_id');
+            $appCertificate = config('services.agora.app_certificate');
+
+            if (empty($appID) || empty($appCertificate)) {
+                throw new Exception('Missing Agora credentials in server configuration.');
+            }
+
+            $channelName = $request->channelName;
+            $user = auth('api')->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthorized.'
+                ], 401);
+            }
+
+            $uid = $user->id; 
+            $cacheKey = "agora_session_{$channelName}_{$uid}";
+            $cachedSession = Cache::get($cacheKey);
+
+            if ($cachedSession) {
+                // If it's an admin rejoining, they still might want the current participant list
+                $responseData = [
+                    'token'   => $cachedSession['token'],
+                    'uid'     => $uid,
+                    'appId'   => $appID
+                ];
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Token retrieved successfully.',
+                    'data' => $responseData
+                ]);
+            }
+
+            $role = RtcTokenBuilder::RolePublisher;
+            $expireTimeInSeconds = 86400; // 24 hours
+            $currentTimestamp = now()->getTimestamp();
+            $privilegeExpireTs = $currentTimestamp + $expireTimeInSeconds;
+            
+            $token = RtcTokenBuilder::buildTokenWithUid($appID, $appCertificate, $channelName, $uid, $role, $privilegeExpireTs);
+
+            // 1. Manage Active Participants List in Cache (Internal Use)
+            $participantsKey = "agora_channel_participants_{$channelName}";
+            $participants = Cache::get($participantsKey, []);
+            if (!in_array($uid, $participants)) {
+                $participants[] = $uid;
+                $ttl = isset($participants['expires_at']) ? ($participants['expires_at'] - now()->timestamp) : $expireTimeInSeconds;
+                if ($ttl > 0) Cache::put($participantsKey, $participants, $ttl);
+            }
+
+            // 2. Cache Individual Session Information (including the token)
+            $sessionData = [
+                'token'         => $token,
+                'channelName'   => $channelName,
+                'uid'           => $uid,
+                'userName'      => $user->name,
+                'isAdmin'       => $user->role === 'admin',
+                'isMuted'       => false,
+                'videoEnabled'  => true,
+                'kicked'        => false,
+                'joinedAt'      => now()->toDateTimeString(),
+                'expires_at'    => $privilegeExpireTs,
+            ];
+
+            Cache::put($cacheKey, $sessionData, $expireTimeInSeconds);
+
+            // 3. Handle Notifications (If it's a regular user joining)
+            if ($user->role !== 'admin') {
+                $admins = User::where('role', 'admin')->whereNotNull('fcm_token')->get();
+                $tokens = $admins->pluck('fcm_token')->toArray();
+                
+                if (!empty($tokens)) {
+                    $this->firebaseService->sendNotification(
+                        $tokens,
+                        'New Participant Joined',
+                        "User {$user->name} has joined the channel: {$channelName}",
+                        ['action' => 'new_participant_joined', 'channelName' => $channelName, 'userId' => (string)$uid]
+                    );
+                }
+            }
+
+            // 4. Return Data
+            $responseData = [
+                'token'      => $token,
+                'uid'        => $uid,
+                'appId'      => $appID
+            ];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Token generated successfully.',
+                'data' => $responseData
+            ]);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->getMessage()
+            ], 422);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Agora Token Generation Failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function muteUser(Request $request)
+    {
+        try {
+            $user = auth('api')->user();
+
+            if (!$user || $user->role !== 'admin') {
+                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+            }
+
+            $request->validate([
+                'channelName' => 'required|string',
+                'uid' => 'required|integer',
+            ]);
+
+            $channelName = $request->channelName;
+            $targetUid = $request->uid;
+
+            $cacheKey = "agora_session_{$channelName}_{$targetUid}";
+            $sessionData = Cache::get($cacheKey);
+
+            if ($sessionData) {
+                $sessionData['isMuted'] = true;
+                $ttl = isset($sessionData['expires_at']) ? ($sessionData['expires_at'] - now()->timestamp) : 86400;
+                if ($ttl > 0) Cache::put($cacheKey, $sessionData, $ttl);
+
+                // Notify the user
+                $targetUser = User::find($targetUid);
+                if ($targetUser && $targetUser->fcm_token) {
+                    $this->firebaseService->sendNotification(
+                        $targetUser->fcm_token,
+                        'You have been muted',
+                        'An admin has muted your microphone.',
+                        ['action' => 'mute_participant', 'channelName' => $channelName, 'userId' => (string)$targetUid]
+                    );
+                }
+
+                return response()->json(['status' => true, 'message' => 'User muted successfully.']);
+            }
+
+            return response()->json(['status' => false, 'message' => 'User session not found.'], 404);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->getMessage()
+            ], 422);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Failed to mute user.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function muteAll(Request $request)
+    {
+        try {
+            $user = auth('api')->user();
+
+            if (!$user || $user->role !== 'admin') {
+                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+            }
+
+            $request->validate([
+                'channelName' => 'required|string',
+            ]);
+
+            $channelName = $request->channelName;
+            $participantsKey = "agora_channel_participants_{$channelName}";
+            $participants = Cache::get($participantsKey, []);
+            $mutedCount = 0;
+            $tokensToNotify = [];
+
+            foreach ($participants as $uid) {
+                if ($uid == $user->id) continue; // Don't mute the admin
+
+                $cacheKey = "agora_session_{$channelName}_{$uid}";
+                $sessionData = Cache::get($cacheKey);
+
+                if ($sessionData) {
+                    $sessionData['isMuted'] = true;
+                    $ttl = isset($sessionData['expires_at']) ? ($sessionData['expires_at'] - now()->timestamp) : 86400;
+                    if ($ttl > 0) Cache::put($cacheKey, $sessionData, $ttl);
+                    $mutedCount++;
+
+                    $pUser = User::find($uid);
+                    if ($pUser && $pUser->fcm_token) {
+                        $tokensToNotify[] = $pUser->fcm_token;
+                    }
+                }
+            }
+
+            if (!empty($tokensToNotify)) {
+                $this->firebaseService->sendNotification(
+                    $tokensToNotify,
+                    'Channel Muted',
+                    'The admin has muted everyone in the channel.',
+                    ['action' => 'mute_all', 'channelName' => $channelName]
+                );
+            }
+
+            return response()->json(['status' => true, 'message' => "Muted $mutedCount users successfully."]);
+
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Failed to mute all.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function kickUser(Request $request)
+    {
+        try {
+            $user = auth('api')->user();
+
+            if (!$user || $user->role !== 'admin') {
+                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+            }
+
+            $request->validate([
+                'channelName' => 'required|string',
+                'uid' => 'required|integer',
+            ]);
+
+            $channelName = $request->channelName;
+            $targetUid = $request->uid;
+
+            $cacheKey = "agora_session_{$channelName}_{$targetUid}";
+            $sessionData = Cache::get($cacheKey);
+
+            if ($sessionData) {
+                $sessionData['kicked'] = true;
+                $ttl = isset($sessionData['expires_at']) ? ($sessionData['expires_at'] - now()->timestamp) : 86400;
+                if ($ttl > 0) Cache::put($cacheKey, $sessionData, $ttl);
+
+                // Notify the user
+                $targetUser = User::find($targetUid);
+                if ($targetUser && $targetUser->fcm_token) {
+                    $this->firebaseService->sendNotification(
+                        $targetUser->fcm_token,
+                        'You have been kicked',
+                        'An admin has removed you from the channel.',
+                        ['action' => 'kick_participant', 'channelName' => $channelName, 'userId' => (string)$targetUid]
+                    );
+                }
+
+                return response()->json(['status' => true, 'message' => 'User kicked successfully.']);
+            }
+
+            return response()->json(['status' => false, 'message' => 'User session not found.'], 404);
+
+        } catch (ValidationException $e) {
+            return response()->json(['status' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Failed to kick user.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function endSession(Request $request)
+    {
+        try {
+            $user = auth('api')->user();
+
+            if (!$user) {
+                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+            }
+
+            $request->validate([
+                'channelName' => 'required|string',
+            ]);
+
+            $channelName = $request->channelName;
+            $participantsKey = "agora_channel_participants_{$channelName}";
+
+            if ($user->role === 'admin') {
+                // Admin: End session for everyone
+                $participants = Cache::get($participantsKey, []);
+                
+                // Clear individual sessions
+                foreach ($participants as $uid) {
+                    Cache::forget("agora_session_{$channelName}_{$uid}");
+
+                    $targetUser = User::find($uid);
+                    if ($targetUser && $targetUser->fcm_token) {
+                        $this->firebaseService->sendNotification(
+                            $targetUser->fcm_token,
+                            'Session has ended',
+                            'The session has ended.',
+                            ['action' => 'session_ended', 'channelName' => $channelName, 'userId' => (string)$uid]
+                        );
+                    }
+                }
+
+                // Clear participants list
+                Cache::forget($participantsKey);
+
+                return response()->json(['status' => true, 'message' => 'Session ended for all users.']);
+            } else {
+                // Regular User: Leave session
+                $uid = $user->id;
+                
+                // Remove from participants list
+                $participants = Cache::get($participantsKey, []);
+                if (($key = array_search($uid, $participants)) !== false) {
+                    unset($participants[$key]);
+                    $ttl = isset($participants['expires_at']) ? ($participants['expires_at'] - now()->timestamp) : $expireTimeInSeconds;
+                    if ($ttl > 0) Cache::put($participantsKey, array_values($participants), $ttl);
+                }
+
+                // Clear individual session
+                Cache::forget("agora_session_{$channelName}_{$uid}");
+
+                return response()->json(['status' => true, 'message' => 'You left the session successfully.']);
+            }
+
+        } catch (ValidationException $e) {
+            return response()->json(['status' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Failed to end session.', 'error' => $e->getMessage()], 500);
+        }
+    }
+}
