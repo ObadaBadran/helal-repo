@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Appointment;
-use App\Models\CourseOnline;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
 
 class CourseOnlineSeeder extends Seeder
 {

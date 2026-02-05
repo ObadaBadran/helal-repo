@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\PrivateLesson;
 use App\Models\PrivateLessonInformation;
-use App\Models\Appointment;
+use Illuminate\Database\Seeder;
 
 class PrivateLessonInformationSeeder extends Seeder
 {
