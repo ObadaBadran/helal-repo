@@ -17,6 +17,7 @@
         "league/flysystem-aws-s3-v3": "*",
         "nyholm/psr7": "^1.8",
         "pusher/pusher-php-server": "^7.2",
+        "stichoza/google-translate-php": "^5.3",
         "stripe/stripe-php": "^18.1",
         "symfony/http-client": "^7.4",
         "tymon/jwt-auth": "^2.2",

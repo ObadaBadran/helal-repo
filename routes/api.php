@@ -21,7 +21,12 @@ use App\Http\Controllers\PrivateLessonController;
 use App\Http\Controllers\PodcastController;
 use App\Http\Controllers\AgoraController;
 use Illuminate\Support\Facades\Mail;
+use App\Http\Controllers\TranslationController;
 
+
+Route::middleware(['auth.api', 'admin'])->group(function () {
+    Route::post('/translate', [TranslationController::class, 'translate']);
+});
 
 
 Route::post('/admin/send-meet-emails/{meeting}', [AdminController::class, 'sendMeetEmails'])->middleware('admin');

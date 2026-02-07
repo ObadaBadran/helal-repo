@@ -138,6 +138,147 @@ class AgoraController extends Controller
             ], 500);
         }
     }
+    public function showBroadcast($channelName)
+{
+    // 1. توليد UID عشوائي
+    $uid = rand(10000, 99999);
+
+    $adminKey = "channel-admin-" . $channelName;
+    $participantsKey = "channel-participants-" . $channelName;
+
+    // 2. إدارة منطق الآدمن
+    if (!Cache::has($adminKey)) {
+        Cache::put($adminKey, $uid, now()->addHours(2));
+        $isAdmin = true;
+        $adminUid = $uid;
+    } else {
+        $isAdmin = false;
+        $adminUid = Cache::get($adminKey);
+    }
+
+    // 3. تحديث قائمة المشاركين في الكاش
+    $participants = Cache::get($participantsKey, []);
+    $participants[$uid] = [
+        'uid' => $uid,
+        'name' => $isAdmin ? 'Teacher' : 'Student ' . $uid,
+        'isAdmin' => $isAdmin,
+        'raisedHand' => false,
+        'isMuted' => false,
+        'videoEnabled' => true,
+        'joined_at' => now()->toDateTimeString()
+    ];
+    
+    // حفظ في الكاش مع التأكد من وجود البيانات
+    Cache::put($participantsKey, $participants, now()->addHours(2));
+
+    // 4. توليد التوكن
+    try {
+        $token = $this->agora->generateToken($channelName, $uid);
+    } catch (\Throwable $e) {
+        abort(500, "Token Error: " . $e->getMessage());
+    }
+
+    return view('live.broadcast', [
+        'appId'       => config('services.agora.app_id'),
+        'token'       => $token,
+        'channelName' => $channelName,
+        'uid'         => $uid,
+        'isAdmin'     => $isAdmin,
+        'adminUid'    => $adminUid,
+        'participants' => $participants
+    ]);
+}
+
+    
+public function getJoinData(Request $request, $channelName)
+{
+    $user = auth('api')->user();
+    if (!$user) {
+        return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
+    }
+
+    $isAdmin = ($user->role === 'admin'); 
+    $participantsKey = "channel-participants-" . $channelName;
+
+    // جلب المشاركين الحاليين من الكاش
+    $participants = Cache::get($participantsKey, []);
+    $user_id = $user->id;
+
+    // الحفاظ على الـ UID القديم أو توليد واحد جديد
+    if (isset($participants[$user_id]['uid'])) {
+        $agoraUid = $participants[$user_id]['uid'];
+    } else {
+        $agoraUid = rand(10000, 99999); 
+    }
+
+    // تنظيف المشاركين القدماء
+    foreach ($participants as $id => $p) {
+        if (isset($p['joinedAt']) && strtotime($p['joinedAt']) < now()->subHours(24)->timestamp) {
+            unset($participants[$id]);
+        }
+    }
+
+    // التحقق من الطرد
+    if (isset($participants[$user_id]) && ($participants[$user_id]['kicked'] ?? false)) {
+        return response()->json(['status' => false, 'message' => 'You are kicked from this session'], 403);
+    }
+
+    // تحديث بيانات المستخدم في الكاش (نستخدم user_id كمفتاح ثابت للتخزين)
+    $participants[$user_id] = [
+        'id'           => $user_id, // أضفنا الـ ID هنا لكي لا يضيع بعد تحويل المصفوفة
+        'uid'          => $agoraUid,
+        'name'         => $user->name,
+        'isAdmin'      => $isAdmin,
+        'isMuted'      => $participants[$user_id]['isMuted'] ?? false,
+        'videoEnabled' => $participants[$user_id]['videoEnabled'] ?? true,
+        'kicked'       => false,
+        'joinedAt'     => now()->toDateTimeString()
+    ];
+
+    // تخزين الكاش (نحتفظ بالمفاتيح الأصلية في الكاش ليسهل علينا البحث في mute و kick)
+    Cache::put($participantsKey, $participants, now()->addHours(24));
+
+    // توليد توكن أغورا
+    try {
+        $token = $this->agora->generateToken($channelName, $agoraUid, 3600);
+    } catch (\Throwable $e) {
+        return response()->json(['status' => false, 'message' => 'Token Error'], 500);
+    }
+
+   
+    $participantsArray = array_values($participants);
+
+    return response()->json([
+        'status'       => true,
+        'appId'        => config('services.agora.app_id'),
+        'token'        => $token,
+        'channelName'  => $channelName,
+        'uid'          => $agoraUid,
+        'isAdmin'      => $isAdmin,
+        'participants' => $participantsArray 
+    ]);
+}
+    /**
+     * API لرفع اليد
+     */
+    public function raiseHand(Request $request)
+    {
+        $uid = $request->uid;
+        $channelName = $request->channel;
+        $action = $request->action; // 'raise' or 'lower'
+        
+        $participantsKey = "channel-participants-" . $channelName;
+        $participants = Cache::get($participantsKey, []);
+        
+        if (isset($participants[$uid])) {
+            $participants[$uid]['raisedHand'] = ($action === 'raise');
+            Cache::put($participantsKey, $participants, now()->addHours(2));
+            
+            return response()->json(['success' => true]);
+        }
+        
+        return response()->json(['success' => false]);
+    }
 
     public function muteUser(Request $request)
     {
