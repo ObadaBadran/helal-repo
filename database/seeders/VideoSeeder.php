@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Video;
+use Illuminate\Database\Seeder;
 
 class VideoSeeder extends Seeder
 {
@@ -99,7 +99,7 @@ class VideoSeeder extends Seeder
             ],
         ];
 
-       foreach ($videos as $video) {
+        foreach ($videos as $video) {
             // حفظ المسار النسبي فقط في قاعدة البيانات
             Video::create($video);
         }

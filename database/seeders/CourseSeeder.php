@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Course;
+use Illuminate\Database\Seeder;
 
 class CourseSeeder extends Seeder
 {
@@ -47,7 +47,7 @@ class CourseSeeder extends Seeder
                 'price_aed' => 449,
                 'price_usd' => 122,
                 'reviews' => 178,
-                'image' => 'courses-seed/image1.jpg',
+                'image' => 'courses-seed/image3.jpg',
             ],
             [
                 'title_en' => 'Technical Analysis Mastery',
@@ -58,9 +58,8 @@ class CourseSeeder extends Seeder
                 'description_ar' => 'إتقان أنماط الشموع اليابانية، المؤشرات الفنية، مستويات الدعم والمقاومة، واستراتيجيات تداول حركة السعر.',
                 'price_aed' => 399,
                 'price_usd' => 109,
-                'price_usd' => 109,
                 'reviews' => 267,
-                'image' => 'courses-seed/image2.jpg',
+                'image' => 'courses-seed/image4.jpg',
             ],
             [
                 'title_en' => 'Options Trading Strategies',
@@ -84,7 +83,7 @@ class CourseSeeder extends Seeder
                 'price_aed' => 279,
                 'price_usd' => 76,
                 'reviews' => 189,
-                'image' => 'courses-seed/image2.jpg',
+                'image' => 'courses-seed/image5.jpg',
             ],
         ];
 
@@ -96,7 +95,7 @@ class CourseSeeder extends Seeder
                 // استخدم صورة افتراضية أو null
                 $course['image'] = null;
             }
-            
+
             Course::create($course);
         }
 

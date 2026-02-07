@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\PrivateLesson;
+use Illuminate\Database\Seeder;
 
 class PrivateLessonsSeeder extends Seeder
 {
@@ -12,8 +12,8 @@ class PrivateLessonsSeeder extends Seeder
      */
     public function run(): void
     {
-       
-       // PrivateLesson::query()->delete();
+
+        // PrivateLesson::query()->delete();
 
         // مصفوفة من الدروس
         $lessons = [
@@ -63,7 +63,7 @@ class PrivateLessonsSeeder extends Seeder
                 // استخدم صورة افتراضية أو null
                 $lesson['cover_image'] = null;
             }
-            
+
             PrivateLesson::create($lesson);
         }
 

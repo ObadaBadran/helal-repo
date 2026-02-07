@@ -4,17 +4,25 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Video;
-use App\Models\Course;
 use App\PaginationTrait;
-use Illuminate\Http\Request;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Services\R2Service;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 
 class VideoController extends Controller
 {
     use PaginationTrait;
+
+    protected $r2Service;
+
+    public function __construct(R2Service $r2Service)
+    {
+        $this->r2Service = $r2Service;
+    }
 
     public function index(Request $request, $course_id)
     {
@@ -79,8 +87,8 @@ class VideoController extends Controller
         try {
             $validatedData = $request->validate([
                 'course_id' => 'required|exists:courses,id',
-                'path' => 'required_without:youtube_path|file|mimes:mp4,mov,avi',
-                'youtube_path' => 'required_without:path|string|max:255',
+                'video_key' => 'required_without:youtube_path|string|max:255',
+                'youtube_path' => 'required_without:video_key|string|max:255',
                 'title_en' => 'required|string|max:255',
                 'title_ar' => 'required|string|max:255',
                 'subTitle_en' => 'nullable|string|max:255',
@@ -91,10 +99,8 @@ class VideoController extends Controller
             ]);
 
             // تخزين الفيديو
-            if ($request->hasFile('path')) {
-                $videoFile = $request->file('path');
-                $path = $videoFile->store('videos', 's3');
-                $validatedData['path'] = $path;
+            if ($request->has('video_key')) {
+                $validatedData['path'] = $request->input('video_key');
             }
 
             // تخزين الغلاف
@@ -126,8 +132,9 @@ class VideoController extends Controller
             $video = Video::findOrFail($id);
 
             $validatedData = $request->validate([
-                'path' => 'nullable|file|mimes:mp4,mov,avi|prohibits:youtube_path',
-                'youtube_path' => 'nullable|string|max:255|prohibits:path',
+
+                'video_key' => 'nullable|string|max:255|prohibits:youtube_path',
+                'youtube_path' => 'nullable|string|max:255|prohibits:video_key',
                 'title_en' => 'nullable|string|max:255',
                 'title_ar' => 'nullable|string|max:255',
                 'subTitle_en' => 'nullable|string|max:255',
@@ -137,13 +144,20 @@ class VideoController extends Controller
                 'cover' => 'nullable|image|mimes:jpeg,png,jpg,gif',
             ]);
 
-            if ($request->hasFile('path')) {
+            if ($request->has('youtube_path')) {
                 if ($video->path && Storage::disk('s3')->exists($video->path)) {
                     Storage::disk('s3')->delete($video->path);
                 }
-                $videoFile = $request->file('path');
-                $path = $videoFile->store('videos', 's3');
-                $validatedData['path'] = $path;
+                $validatedData['youtube_path'] = $request->get('youtube_path');
+                $validatedData['path'] = null;
+            }
+
+            if ($request->has('video_key')) {
+                if ($video->path && Storage::disk('s3')->exists($video->path)) {
+                    Storage::disk('s3')->delete($video->path);
+                }
+                $validatedData['path'] = $request->get('video_key');
+                $validatedData['youtube_path'] = null;
             }
 
             if ($request->hasFile('cover')) {
@@ -259,6 +273,93 @@ class VideoController extends Controller
                 'status' => 'error',
                 'message' => 'Failed to retrieve video',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function initiateUpload(Request $request)
+    {
+        $request->validate([
+            'filename' => 'required|string',
+            'contentType' => 'nullable|string',
+        ]);
+
+        try {
+            $data = $this->r2Service->initiateMultipartUpload(
+                $request->input('filename'),
+                $request->input('contentType', 'video/mp4')
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $data,
+            ]);
+        } catch (Exception $e) {
+            Log::error('R2 Initiate Upload Error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to initiate upload',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getUploadPartUrl(Request $request)
+    {
+        $request->validate([
+            'key' => 'required|string',
+            'uploadId' => 'required|string',
+            'partNumber' => 'required|integer',
+        ]);
+
+        try {
+            $url = $this->r2Service->getPresignedPartUrl(
+                $request->input('key'),
+                $request->input('uploadId'),
+                $request->input('partNumber')
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'url' => $url,
+            ]);
+        } catch (Exception $e) {
+            Log::error('R2 Get Part URL Error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to get upload URL',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function completeUpload(Request $request)
+    {
+        $request->validate([
+            'key' => 'required|string',
+            'uploadId' => 'required|string',
+            'parts' => 'required|array',
+            'parts.*.PartNumber' => 'required|integer',
+            'parts.*.ETag' => 'required|string',
+        ]);
+
+        try {
+            $key = $this->r2Service->completeMultipartUpload(
+                $request->input('key'),
+                $request->input('uploadId'),
+                $request->input('parts')
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'key' => $key,
+            ]);
+        } catch (Exception $e) {
+            Log::error('R2 Complete Upload Error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to complete upload',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

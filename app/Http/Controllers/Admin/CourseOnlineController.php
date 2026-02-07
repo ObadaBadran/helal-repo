@@ -6,14 +6,12 @@ use App\HandlesAppointmentTimesTrait;
 use App\Http\Controllers\Controller;
 use App\Mail\CourseReadyMail;
 use App\Models\Appointment;
-use App\Models\Enroll;
-use Illuminate\Http\Request;
 use App\Models\CourseOnline;
-use App\Models\User;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
-use Exception;
+use App\Models\Enroll;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class CourseOnlineController extends Controller
 {
@@ -86,170 +84,172 @@ class CourseOnlineController extends Controller
     /**
      * إضافة رابط الاجتماع وإرسال البريد
      */
-   public function addMeetUrl(Request $request, CourseOnline $course)
-   {
-    try {
-        
-        $adminId = auth('api')->id();
-        $dateTime = now()->format('YmdHis');
-        $channelName = "course_live_{$adminId}_{$course->id}_{$dateTime}";    
+    public function addMeetUrl(Request $request, CourseOnline $course)
+    {
+        try {
 
-        $enrolledUsers = $course->enrolls()
-            ->where('payment_status', 'paid')
-            ->with('user')
-            ->get()
-            ->pluck('user')
-            ->unique('id');
+            $adminId = auth('api')->id();
+            $dateTime = now()->format('YmdHis');
+            $channelName = "course_live_{$adminId}_{$course->id}_{$dateTime}";
 
-        if ($enrolledUsers->isEmpty()) {
+            $enrolledUsers = $course->enrolls()
+                ->where('payment_status', 'paid')
+                ->with('user')
+                ->get()
+                ->pluck('user')
+                ->unique('id');
+
+            if ($enrolledUsers->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No enrolled users found to send emails.'
+                ], 404);
+            }
+
+
+            $course->update([
+                'meet_url' => $channelName,
+                'active' => true,
+            ]);
+
+
+            $studentBaseUrl = config('services.meet_url.web');
+            $fullJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $channelName;
+
+            foreach ($enrolledUsers as $user) {
+
+                Mail::to($user->email)->send(new CourseReadyMail($user, $course, $fullJoinUrl));
+            }
+
+            // تحسين عرض البيانات في الرد
+            if ($course->cover_image) {
+                $course->cover_image = asset($course->cover_image);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Meeting channel created and emails sent successfully.',
+                'data' => [
+                    'course_id' => $course->id,
+                    'channel_name' => $channelName,
+                    'join_url' => $fullJoinUrl,
+                    'active' => $course->active
+                ]
+            ]);
+
+        } catch (Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'No enrolled users found to send emails.'
-            ], 404);
+                'message' => 'Failed to process meeting.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        
-        $course->update([
-            'meet_url' => $channelName,            
-        ]);
-
-       
-        $studentBaseUrl = config('services.meet_url.web'); 
-        $fullJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $channelName;
-
-        foreach ($enrolledUsers as $user) {
-           
-            Mail::to($user->email)->send(new CourseReadyMail($user, $course, $fullJoinUrl));
-        }
-
-        // تحسين عرض البيانات في الرد
-        if ($course->cover_image) {
-            $course->cover_image = asset($course->cover_image);
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Meeting channel created and emails sent successfully.',
-            'data' => [
-                'course_id' => $course->id,
-                'channel_name' => $channelName,
-                'join_url' => $fullJoinUrl,
-                'active' => $course->active
-            ]
-        ]);
-
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Failed to process meeting.',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     /**
      * تحديث كورس
      */
     public function update(Request $request, $id)
-   {
-    try {
-        $course = CourseOnline::findOrFail($id);
+    {
+        try {
+            $course = CourseOnline::findOrFail($id);
 
-        $data = $request->validate([
-            'name_en' => 'sometimes|string|max:255',
-            'description_en' => 'sometimes|string',
-            'name_ar' => 'sometimes|string|max:255',
-            'description_ar' => 'sometimes|string',
-            'price_aed' => 'sometimes|numeric|min:0',
-            'price_usd' => 'sometimes|numeric|min:0',
-            'date' => 'sometimes|date_format:d-m-Y',
-            'start_time' => 'sometimes|date_format:H:i',
-            'end_time' => 'sometimes|date_format:H:i|after:start_time',
-            'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
-        ]);
+            $data = $request->validate([
+                'name_en' => 'sometimes|string|max:255',
+                'description_en' => 'sometimes|string',
+                'name_ar' => 'sometimes|string|max:255',
+                'description_ar' => 'sometimes|string',
+                'price_aed' => 'sometimes|numeric|min:0',
+                'price_usd' => 'sometimes|numeric|min:0',
+                'date' => 'sometimes|date_format:d-m-Y',
+                'start_time' => 'sometimes|date_format:H:i',
+                'end_time' => 'sometimes|date_format:H:i|after:start_time',
+                'cover_image' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg|max:10240',
+            ]);
 
-        // معالجة تحديث الموعد
-        if (isset($data['date']) || isset($data['start_time']) || isset($data['end_time'])) {
-            $appointment = $course->appointment;
+            // معالجة تحديث الموعد
+            if (isset($data['date']) || isset($data['start_time']) || isset($data['end_time'])) {
+                $appointment = $course->appointment;
 
-            // تحضير بيانات الموعد للتحديث
-            $appointmentData = [];
+                // تحضير بيانات الموعد للتحديث
+                $appointmentData = [];
 
-            if (isset($data['date'])) {
-                $appointmentData['date'] = Carbon::createFromFormat('d-m-Y', $data['date'])->format('Y-m-d');
-            }
-
-            if (isset($data['start_time'])) {
-                $appointmentData['start_time'] = $data['start_time'];
-            }
-
-            if (isset($data['end_time'])) {
-                $appointmentData['end_time'] = $data['end_time'];
-            }
-
-            // التحقق من التعارض فقط إذا كان هناك تغيير في الوقت
-            if (!empty($appointmentData)) {
-                $checkDate = $appointmentData['date'] ?? $appointment->date->format('Y-m-d');
-                $checkStartTime = $appointmentData['start_time'] ?? $appointment->start_time;
-                $checkEndTime = $appointmentData['end_time'] ?? $appointment->end_time;
-
-                if (!$this->checkAppointmentConflict($checkDate, $checkStartTime, $checkEndTime, $appointment->id)) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Failed to update course.',
-                        'error' => 'There is another appointment at this time.'
-                    ], 400);
+                if (isset($data['date'])) {
+                    $appointmentData['date'] = Carbon::createFromFormat('d-m-Y', $data['date'])->format('Y-m-d');
                 }
 
-                // تحديث الموعد
-                $appointment->update($appointmentData);
+                if (isset($data['start_time'])) {
+                    $appointmentData['start_time'] = $data['start_time'];
+                }
 
-                // إعادة تعيين رابط الاجتماع عند تغيير الموعد
-                $data['meet_url'] = null;
+                if (isset($data['end_time'])) {
+                    $appointmentData['end_time'] = $data['end_time'];
+                }
+
+                // التحقق من التعارض فقط إذا كان هناك تغيير في الوقت
+                if (!empty($appointmentData)) {
+                    $checkDate = $appointmentData['date'] ?? $appointment->date->format('Y-m-d');
+                    $checkStartTime = $appointmentData['start_time'] ?? $appointment->start_time;
+                    $checkEndTime = $appointmentData['end_time'] ?? $appointment->end_time;
+
+                    if (!$this->checkAppointmentConflict($checkDate, $checkStartTime, $checkEndTime, $appointment->id)) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Failed to update course.',
+                            'error' => 'There is another appointment at this time.'
+                        ], 400);
+                    }
+
+                    // تحديث الموعد
+                    $appointment->update($appointmentData);
+
+                    // إعادة تعيين رابط الاجتماع عند تغيير الموعد
+                    $data['meet_url'] = null;
+                    $data['active'] = false;
+                }
+
+                // إزالة بيانات الموعد من $data حتى لا يتم تحديثها في جدول الكورس
+                unset($data['date'], $data['start_time'], $data['end_time']);
             }
 
-            // إزالة بيانات الموعد من $data حتى لا يتم تحديثها في جدول الكورس
-            unset($data['date'], $data['start_time'], $data['end_time']);
-        }
+            // معالجة تحديث الصورة
+            if ($request->hasFile('cover_image')) {
+                // حذف الصورة القديمة
+                if ($course->cover_image && file_exists(public_path($course->cover_image))) {
+                    unlink(public_path($course->cover_image));
+                }
 
-        // معالجة تحديث الصورة
-        if ($request->hasFile('cover_image')) {
-            // حذف الصورة القديمة
-            if ($course->cover_image && file_exists(public_path($course->cover_image))) {
-                unlink(public_path($course->cover_image));
+                $dir = public_path('course_covers');
+                if (!file_exists($dir)) mkdir($dir, 0777, true);
+
+                $imageName = 'course_' . uniqid() . '.' . $request->file('cover_image')->getClientOriginalExtension();
+                $request->file('cover_image')->move($dir, $imageName);
+                $data['cover_image'] = 'course_covers/' . $imageName;
             }
 
-            $dir = public_path('course_covers');
-            if (!file_exists($dir)) mkdir($dir, 0777, true);
+            // تحديث بيانات الكورس
+            $course->update($data);
 
-            $imageName = 'course_' . uniqid() . '.' . $request->file('cover_image')->getClientOriginalExtension();
-            $request->file('cover_image')->move($dir, $imageName);
-            $data['cover_image'] = 'course_covers/' . $imageName;
+            // تحميل العلاقة المحدثة
+            $course->load('appointment');
+
+            if ($course->cover_image) {
+                $course->cover_image = asset($course->cover_image);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Course updated successfully.',
+                'data' => $course
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update course.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        // تحديث بيانات الكورس
-        $course->update($data);
-
-        // تحميل العلاقة المحدثة
-        $course->load('appointment');
-
-        if ($course->cover_image) {
-            $course->cover_image = asset($course->cover_image);
-        }
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Course updated successfully.',
-            'data' => $course
-        ]);
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Failed to update course.',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     /**
      * عرض الكورسات مع Pagination
@@ -264,17 +264,14 @@ class CourseOnlineController extends Controller
 
             $courses = CourseOnline::with('appointment');
 
-            if($request->has('active')){
-                if($active === true)
-                    $courses = $courses->where('active', true);
-                if($active === false)
-                    $courses = $courses->where('active', false);
+            if ($request->has('active')) {
+                $courses = $courses->where('active', $active);
             }
 
             $courses = $courses->orderBy('id', 'asc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
-           
+
             $data = $courses->map(function ($course) use ($lang) {
                 return [
                     'id' => $course->id,
@@ -313,122 +310,122 @@ class CourseOnlineController extends Controller
     /**
      * كورسات المستخدم
      */
-   public function myCourses(Request $request)
-{
-    $lang = $request->query('lang', 'en');
-    $user = auth('api')->user();
+    public function myCourses(Request $request)
+    {
+        $lang = $request->query('lang', 'en');
+        $user = auth('api')->user();
 
-    if (!$user) {
-        return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
-    }
-
-    $enrolls = $user->enrolls()
-        ->with('courseOnline.appointment')
-        ->whereNotNull('course_online_id')
-        ->get();
-
-    $data = $enrolls->map(function ($enroll) use ($lang) {
-        $course = $enroll->courseOnline;
-        if (!$course) return null;
-
-        // تركيب الرابط الكامل ديناميكياً
-        $channelName = $course->meet_url;
-        $fullJoinUrl = null;
-        
-        if ($channelName) {
-            $studentBaseUrl = config('services.meet_url.web');
-            $fullJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $channelName;
+        if (!$user) {
+            return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
         }
 
-        return [
-            'enroll_id' => $enroll->id,
-            'course_id' => $course->id,
-            'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
-            'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
-            'price_aed' => $course->price_aed,
-            'price_usd' => $course->price_usd,
-            'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
-            
-            // إضافة الحقول الجديدة هنا
-            'channel_name' => $channelName,
-            'join_url'     => $fullJoinUrl, 
-            
-            'appointment' => $course->appointment,
-        ];
-    })->filter()->values(); // استخدام values لإعادة ترتيب المصفوفة بعد الـ filter
+        $enrolls = $user->enrolls()
+            ->with('courseOnline.appointment')
+            ->whereNotNull('course_online_id')
+            ->get();
 
-    return response()->json([
-        'status' => true,
-        'data' => $data
-    ]);
-}
+        $data = $enrolls->map(function ($enroll) use ($lang) {
+            $course = $enroll->courseOnline;
+            if (!$course) return null;
 
-   
-public function adminPaidCourses(Request $request)
-{
-    try {
-        $lang = $request->query('lang', 'en');
-        $page = (int) $request->query('page', 1);
-        $perPage = (int) $request->query('per_page', 10);
-
-        // جلب الكورسات التي لديها "اشتراكات مدفوعة" فقط
-        // نستخدم whereHas للتأكد من وجود مشتركين دفعوا فعلياً
-        $courses = CourseOnline::whereHas('enrolls', function ($query) {
-                $query->where('payment_status', 'paid');
-            })
-            ->with(['appointment'])
-            ->withCount(['enrolls as paid_students_count' => function ($query) {
-                $query->where('payment_status', 'paid');
-            }])
-            ->orderBy('id', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
-
-        $adminBaseUrl = config('services.meet_url.dash');
-
-        $data = $courses->getCollection()->map(function ($course) use ($lang, $adminBaseUrl) {
-            
+            // تركيب الرابط الكامل ديناميكياً
             $channelName = $course->meet_url;
-            $joinUrl = $channelName
-                ? rtrim($adminBaseUrl, '/') . '/' . $channelName
-                : null;
+            $fullJoinUrl = null;
+
+            if ($channelName) {
+                $studentBaseUrl = config('services.meet_url.web');
+                $fullJoinUrl = rtrim($studentBaseUrl, '/') . '/' . $channelName;
+            }
 
             return [
-                'id'           => $course->id,
-                'name'         => $lang === 'ar' ? $course->name_ar : $course->name_en,
-                'description'  => $lang === 'ar' ? $course->description_ar : $course->description_en,
-                'price_aed'    => $course->price_aed,
-                'price_usd'    => $course->price_usd,
-                'cover_image'  => $course->cover_image ? asset($course->cover_image) : null,
-                'paid_students_count' => $course->paid_students_count, // عدد الطلاب الذين دفعوا لهذا الكورس
+                'enroll_id' => $enroll->id,
+                'course_id' => $course->id,
+                'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
+                'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
+                'price_aed' => $course->price_aed,
+                'price_usd' => $course->price_usd,
+                'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
 
-                // بيانات البث
+                // إضافة الحقول الجديدة هنا
                 'channel_name' => $channelName,
-                'join_url'     => $joinUrl,
+                'join_url' => $fullJoinUrl,
 
-                // الموعد
-                'appointment'  => $course->appointment,
+                'appointment' => $course->appointment,
             ];
-        });
+        })->filter()->values(); // استخدام values لإعادة ترتيب المصفوفة بعد الـ filter
 
         return response()->json([
             'status' => true,
-            'data' => $data,
-            'pagination' => [
-                'current_page' => $courses->currentPage(),
-                'last_page'    => $courses->lastPage(),
-                'per_page'     => $courses->perPage(),
-                'total'        => $courses->total(),
-            ]
+            'data' => $data
         ]);
-
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Failed to fetch unique paid courses.',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
+
+
+    public function adminPaidCourses(Request $request)
+    {
+        try {
+            $lang = $request->query('lang', 'en');
+            $page = (int)$request->query('page', 1);
+            $perPage = (int)$request->query('per_page', 10);
+
+            // جلب الكورسات التي لديها "اشتراكات مدفوعة" فقط
+            // نستخدم whereHas للتأكد من وجود مشتركين دفعوا فعلياً
+            $courses = CourseOnline::whereHas('enrolls', function ($query) {
+                $query->where('payment_status', 'paid');
+            })
+                ->with(['appointment'])
+                ->withCount(['enrolls as paid_students_count' => function ($query) {
+                    $query->where('payment_status', 'paid');
+                }])
+                ->orderBy('id', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            $adminBaseUrl = config('services.meet_url.dash');
+
+            $data = $courses->getCollection()->map(function ($course) use ($lang, $adminBaseUrl) {
+
+                $channelName = $course->meet_url;
+                $joinUrl = $channelName
+                    ? rtrim($adminBaseUrl, '/') . '/' . $channelName
+                    : null;
+
+                return [
+                    'id' => $course->id,
+                    'name' => $lang === 'ar' ? $course->name_ar : $course->name_en,
+                    'description' => $lang === 'ar' ? $course->description_ar : $course->description_en,
+                    'price_aed' => $course->price_aed,
+                    'price_usd' => $course->price_usd,
+                    'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
+                    'paid_students_count' => $course->paid_students_count, // عدد الطلاب الذين دفعوا لهذا الكورس
+
+                    // بيانات البث
+                    'channel_name' => $channelName,
+                    'join_url' => $joinUrl,
+
+                    // الموعد
+                    'appointment' => $course->appointment,
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'data' => $data,
+                'pagination' => [
+                    'current_page' => $courses->currentPage(),
+                    'last_page' => $courses->lastPage(),
+                    'per_page' => $courses->perPage(),
+                    'total' => $courses->total(),
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch unique paid courses.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 
     /**
@@ -467,9 +464,9 @@ public function adminPaidCourses(Request $request)
                     'price_usd' => $course->price_usd,
                     // 'date' => $course->date,
                     'cover_image' => $course->cover_image,
-                  //  'meet_url' => $meetUrl,
+                    //  'meet_url' => $meetUrl,
                     'appointment' => $course->appointment,
-                  //  'active' => $course->active,
+                    //  'active' => $course->active,
                 ]
             ]);
         } catch (Exception $e) {
@@ -484,35 +481,35 @@ public function adminPaidCourses(Request $request)
     /**
      * حذف كورس
      */
-   public function destroy(CourseOnline $course)
-{
-    try {
-       
-        Enroll::where('course_online_id', $course->id)->delete();
+    public function destroy(CourseOnline $course)
+    {
+        try {
 
-        
-        if ($course->cover_image && file_exists(public_path($course->cover_image))) {
-            unlink(public_path($course->cover_image));
+            Enroll::where('course_online_id', $course->id)->delete();
+
+
+            if ($course->cover_image && file_exists(public_path($course->cover_image))) {
+                unlink(public_path($course->cover_image));
+            }
+
+
+            if ($course->appointment) {
+                $course->appointment->delete();
+            }
+
+
+            $course->delete();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Course and related enrollments deleted successfully.'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete course.',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-       
-        if ($course->appointment) {
-            $course->appointment->delete();
-        }
-
-        
-        $course->delete();
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Course and related enrollments deleted successfully.'
-        ]);
-    } catch (Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Failed to delete course.',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 }

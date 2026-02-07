@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\NewsSection;
 use App\Models\NewsSectionImage;
+use Illuminate\Database\Seeder;
 
 class NewsSectionSeeder extends Seeder
 {
@@ -59,7 +59,7 @@ class NewsSectionSeeder extends Seeder
                     'trading/chart_patterns.jpg'
                 ]
             ],
-           
+
             [
                 'title_en' => 'Risk Management in Trading',
                 'title_ar' => 'إدارة المخاطر في التداول',
@@ -71,7 +71,7 @@ class NewsSectionSeeder extends Seeder
                     'trading/risk_management.jpg'
                 ]
             ],
-           
+
             [
                 'title_en' => 'Trading Psychology & Discipline',
                 'title_ar' => 'سيكولوجية التداول والانضباط',
@@ -86,7 +86,7 @@ class NewsSectionSeeder extends Seeder
             ],
         ];
 
-       foreach ($sectionsData as $sec) {
+        foreach ($sectionsData as $sec) {
             $section = NewsSection::create([
                 'title_en' => $sec['title_en'],
                 'title_ar' => $sec['title_ar'],

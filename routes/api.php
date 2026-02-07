@@ -51,6 +51,7 @@ Route::middleware(['auth.api', 'admin'])->group(function () {
 Route::middleware('auth.api')->group(function () {
     Route::post('/agora/token', [AgoraController::class, 'generateToken']);
     Route::post('/agora/session/end', [AgoraController::class, 'endSession']);
+    Route::post('/agora/raise/hand', [AgoraController::class, 'raiseHand']);
 });
 Route::post('/send-otp', [AuthController::class, 'sendOtp']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
@@ -104,6 +105,10 @@ Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::delete('/admin/courses/delete/{id}', [CourseController::class, 'destroy']);
 
     //videos
+    Route::post('/admin/videos/upload/initiate', [VideoController::class, 'initiateUpload']);
+    Route::post('/admin/videos/upload/part-url', [VideoController::class, 'getUploadPartUrl']);
+    Route::post('/admin/videos/upload/complete', [VideoController::class, 'completeUpload']);
+
     Route::post('/admin/videos/store', [VideoController::class, 'store']);
     Route::post('/admin/videos/update/{id}', [VideoController::class, 'update']);
     Route::delete('/admin/videos/delete/{id}', [VideoController::class, 'destroy']);
