@@ -37,7 +37,7 @@ class AgoraController extends Controller
 
             $channelName = $request->channelName;
             $user = auth('api')->user();
-            
+
             if (!$user) {
                 return response()->json([
                     'status' => false,
@@ -45,7 +45,7 @@ class AgoraController extends Controller
                 ], 401);
             }
 
-            $uid = $user->id; 
+            $uid = $user->id;
             $cacheKey = "agora_session_{$channelName}_{$uid}";
             $cachedSession = Cache::get($cacheKey);
 
@@ -68,7 +68,7 @@ class AgoraController extends Controller
             $expireTimeInSeconds = 86400; // 24 hours
             $currentTimestamp = now()->getTimestamp();
             $privilegeExpireTs = $currentTimestamp + $expireTimeInSeconds;
-            
+
             $token = RtcTokenBuilder::buildTokenWithUid($appID, $appCertificate, $channelName, $uid, $role, $privilegeExpireTs);
 
             // 1. Manage Active Participants List in Cache (Internal Use)
@@ -100,7 +100,7 @@ class AgoraController extends Controller
             if ($user->role !== 'admin') {
                 $admins = User::where('role', 'admin')->whereNotNull('fcm_token')->get();
                 $tokens = $admins->pluck('fcm_token')->toArray();
-                
+
                 if (!empty($tokens)) {
                     $this->firebaseService->sendNotification(
                         $tokens,
@@ -160,22 +160,27 @@ class AgoraController extends Controller
             $sessionData = Cache::get($cacheKey);
 
             if ($sessionData) {
-                $sessionData['isMuted'] = true;
+                $sessionData['isMuted'] = !$sessionData['isMuted'];
                 $ttl = isset($sessionData['expires_at']) ? ($sessionData['expires_at'] - now()->timestamp) : 86400;
                 if ($ttl > 0) Cache::put($cacheKey, $sessionData, $ttl);
 
                 // Notify the user
                 $targetUser = User::find($targetUid);
                 if ($targetUser && $targetUser->fcm_token) {
+                    $action = $sessionData['isMuted'] ? 'mute_participant' : 'unmute_participant';
+                    $title = $sessionData['isMuted'] ? 'You have been muted' : 'You have been unmuted';
+                    $body = $sessionData['isMuted'] ? 'An admin has muted your microphone.' : 'An admin has unmuted your microphone.';
+
                     $this->firebaseService->sendNotification(
                         $targetUser->fcm_token,
-                        'You have been muted',
-                        'An admin has muted your microphone.',
-                        ['action' => 'mute_participant', 'channelName' => $channelName, 'userId' => (string)$targetUid]
+                        $title,
+                        $body,
+                        ['action' => $action, 'channelName' => $channelName, 'userId' => (string)$targetUid]
                     );
                 }
 
-                return response()->json(['status' => true, 'message' => 'User muted successfully.']);
+                $message = $sessionData['isMuted'] ? 'User muted successfully.' : 'User unmuted successfully.';
+                return response()->json(['status' => true, 'message' => $message]);
             }
 
             return response()->json(['status' => false, 'message' => 'User session not found.'], 404);
@@ -187,7 +192,7 @@ class AgoraController extends Controller
                 'errors' => $e->getMessage()
             ], 422);
         } catch (Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Failed to mute user.', 'error' => $e->getMessage()], 500);
+            return response()->json(['status' => false, 'message' => 'Failed to update mute status.', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -202,25 +207,26 @@ class AgoraController extends Controller
 
             $request->validate([
                 'channelName' => 'required|string',
+                'shouldMute' => 'required|boolean',
             ]);
 
             $channelName = $request->channelName;
             $participantsKey = "agora_channel_participants_{$channelName}";
             $participants = Cache::get($participantsKey, []);
-            $mutedCount = 0;
+            $count = 0;
             $tokensToNotify = [];
 
             foreach ($participants as $uid) {
-                if ($uid == $user->id) continue; // Don't mute the admin
+                if ($uid == $user->id) continue; // Don't mute/unmute the admin
 
                 $cacheKey = "agora_session_{$channelName}_{$uid}";
                 $sessionData = Cache::get($cacheKey);
 
                 if ($sessionData) {
-                    $sessionData['isMuted'] = true;
+                    $sessionData['isMuted'] = $request->shouldMute;
                     $ttl = isset($sessionData['expires_at']) ? ($sessionData['expires_at'] - now()->timestamp) : 86400;
                     if ($ttl > 0) Cache::put($cacheKey, $sessionData, $ttl);
-                    $mutedCount++;
+                    $count++;
 
                     $pUser = User::find($uid);
                     if ($pUser && $pUser->fcm_token) {
@@ -230,18 +236,29 @@ class AgoraController extends Controller
             }
 
             if (!empty($tokensToNotify)) {
+                $action = $request->shouldMute ? 'mute_all' : 'unmute_all';
+                $title = $request->shouldMute ? 'Channel Muted' : 'Channel Unmuted';
+                $body = $request->shouldMute ? 'The admin has muted everyone in the channel.' : 'The admin has unmuted everyone in the channel.';
+
                 $this->firebaseService->sendNotification(
                     $tokensToNotify,
-                    'Channel Muted',
-                    'The admin has muted everyone in the channel.',
-                    ['action' => 'mute_all', 'channelName' => $channelName]
+                    $title,
+                    $body,
+                    ['action' => $action, 'channelName' => $channelName]
                 );
             }
 
-            return response()->json(['status' => true, 'message' => "Muted $mutedCount users successfully."]);
+            $actionText = $request->shouldMute ? 'Muted' : 'Unmuted';
+            return response()->json(['status' => true, 'message' => "$actionText $count users successfully."]);
 
+        } catch (ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation failed',
+                'errors' => $e->getMessage()
+            ], 422);
         } catch (Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Failed to mute all.', 'error' => $e->getMessage()], 500);
+            return response()->json(['status' => false, 'message' => 'Failed to update mute status for all.', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -293,6 +310,43 @@ class AgoraController extends Controller
         }
     }
 
+    public function raiseHand(Request $request)
+    {
+        try {
+            $user = auth('api')->user();
+
+            if (!$user || $user->role !== 'user') {
+                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+            }
+
+            $request->validate([
+                'channelName' => 'required|string'
+            ]);
+
+            $channelName = $request->channelName;
+            $uid = $user->id;
+
+            $admins = User::where('role', 'admin')->whereNotNull('fcm_token')->get();
+            $tokens = $admins->pluck('fcm_token')->toArray();
+
+            if (!empty($tokens)) {
+                $this->firebaseService->sendNotification(
+                    $tokens,
+                    'A user raised his hand',
+                    "{$user->name} raised his hand",
+                    ['action' => 'raise_hand', 'channelName' => $channelName, 'userId' => (string)$uid]
+                );
+            }
+
+            return response()->json(['status' => true, 'message' => 'User raised his hand successfully.']);
+
+        } catch (ValidationException $e) {
+            return response()->json(['status' => false, 'message' => 'Validation failed', 'errors' => $e->errors()], 422);
+        } catch (Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Failed to raise hand.', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function endSession(Request $request)
     {
         try {
@@ -312,7 +366,7 @@ class AgoraController extends Controller
             if ($user->role === 'admin') {
                 // Admin: End session for everyone
                 $participants = Cache::get($participantsKey, []);
-                
+
                 // Clear individual sessions
                 foreach ($participants as $uid) {
                     Cache::forget("agora_session_{$channelName}_{$uid}");
@@ -335,12 +389,12 @@ class AgoraController extends Controller
             } else {
                 // Regular User: Leave session
                 $uid = $user->id;
-                
+
                 // Remove from participants list
                 $participants = Cache::get($participantsKey, []);
                 if (($key = array_search($uid, $participants)) !== false) {
                     unset($participants[$key]);
-                    $ttl = isset($participants['expires_at']) ? ($participants['expires_at'] - now()->timestamp) : $expireTimeInSeconds;
+                    $ttl = isset($participants['expires_at']) ? ($participants['expires_at'] - now()->timestamp) : 86400;
                     if ($ttl > 0) Cache::put($participantsKey, array_values($participants), $ttl);
                 }
 

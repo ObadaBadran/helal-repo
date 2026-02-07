@@ -46,6 +46,7 @@ Route::middleware(['auth.api', 'admin'])->group(function () {
 Route::middleware('auth.api')->group(function () {
     Route::post('/agora/token', [AgoraController::class, 'generateToken']);
     Route::post('/agora/session/end', [AgoraController::class, 'endSession']);
+    Route::post('/agora/raise/hand', [AgoraController::class, 'raiseHand']);
 });
 Route::post('/send-otp', [AuthController::class, 'sendOtp']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
