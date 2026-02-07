@@ -100,6 +100,10 @@ Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::delete('/admin/courses/delete/{id}', [CourseController::class, 'destroy']);
 
     //videos
+    Route::post('/admin/videos/upload/initiate', [VideoController::class, 'initiateUpload']);
+    Route::post('/admin/videos/upload/part-url', [VideoController::class, 'getUploadPartUrl']);
+    Route::post('/admin/videos/upload/complete', [VideoController::class, 'completeUpload']);
+
     Route::post('/admin/videos/store', [VideoController::class, 'store']);
     Route::post('/admin/videos/update/{id}', [VideoController::class, 'update']);
     Route::delete('/admin/videos/delete/{id}', [VideoController::class, 'destroy']);

@@ -3,6 +3,14 @@
 /public/build
 /public/hot
 /public/storage
+/public/course_covers
+/public/course_images
+/public/covers
+/public/news_images
+/public/podcasts
+/public/private_covers
+/public/profile-images
+/public/videos
 /storage/*.key
 /storage/pail
 /vendor
