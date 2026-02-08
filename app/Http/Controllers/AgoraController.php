@@ -38,13 +38,6 @@ class AgoraController extends Controller
             $channelName = $request->channelName;
             $user = auth('api')->user();
 
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthorized.'
-                ], 401);
-            }
-
             $uid = $user->id;
             $cacheKey = "agora_session_{$channelName}_{$uid}";
             $cachedSession = Cache::get($cacheKey);
@@ -142,12 +135,6 @@ class AgoraController extends Controller
     public function muteUser(Request $request)
     {
         try {
-            $user = auth('api')->user();
-
-            if (!$user || $user->role !== 'admin') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
-
             $request->validate([
                 'channelName' => 'required|string',
                 'uid' => 'required|integer',
@@ -200,10 +187,6 @@ class AgoraController extends Controller
     {
         try {
             $user = auth('api')->user();
-
-            if (!$user || $user->role !== 'admin') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
 
             $request->validate([
                 'channelName' => 'required|string',
@@ -265,12 +248,6 @@ class AgoraController extends Controller
     public function kickUser(Request $request)
     {
         try {
-            $user = auth('api')->user();
-
-            if (!$user || $user->role !== 'admin') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
-
             $request->validate([
                 'channelName' => 'required|string',
                 'uid' => 'required|integer',
@@ -316,7 +293,7 @@ class AgoraController extends Controller
             $user = auth('api')->user();
 
             if (!$user || $user->role !== 'user') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 401);
             }
 
             $request->validate([
@@ -351,10 +328,6 @@ class AgoraController extends Controller
     {
         try {
             $user = auth('api')->user();
-
-            if (!$user) {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
 
             $request->validate([
                 'channelName' => 'required|string',

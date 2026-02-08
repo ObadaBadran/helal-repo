@@ -109,7 +109,7 @@ class CourseOnlineController extends Controller
 
             $course->update([
                 'meet_url' => $channelName,
-                'active' => true,
+                'active_at' => $course->active_at ?? now(),
             ]);
 
 
@@ -132,8 +132,7 @@ class CourseOnlineController extends Controller
                 'data' => [
                     'course_id' => $course->id,
                     'channel_name' => $channelName,
-                    'join_url' => $fullJoinUrl,
-                    'active' => $course->active
+                    'join_url' => $fullJoinUrl
                 ]
             ]);
 
@@ -205,7 +204,6 @@ class CourseOnlineController extends Controller
 
                     // إعادة تعيين رابط الاجتماع عند تغيير الموعد
                     $data['meet_url'] = null;
-                    $data['active'] = false;
                 }
 
                 // إزالة بيانات الموعد من $data حتى لا يتم تحديثها في جدول الكورس
@@ -265,7 +263,11 @@ class CourseOnlineController extends Controller
             $courses = CourseOnline::with('appointment');
 
             if ($request->has('active')) {
-                $courses = $courses->where('active', $active);
+                if ($active === true) {
+                    $courses = $courses->whereNotNull('active');
+                } else {
+                    $courses = $courses->whereNull('active');
+                }
             }
 
             $courses = $courses->orderBy('id', 'asc')
@@ -284,7 +286,7 @@ class CourseOnlineController extends Controller
                     'cover_image' => $course->cover_image ? asset($course->cover_image) : null,
                     //'meet_url' => $course->meet_url,
                     'appointment' => $course->appointment,
-                    //'active' => $course->active,
+                    'activeAt' => $course->active_at,
                 ];
             });
 
@@ -466,7 +468,7 @@ class CourseOnlineController extends Controller
                     'cover_image' => $course->cover_image,
                     //  'meet_url' => $meetUrl,
                     'appointment' => $course->appointment,
-                    //  'active' => $course->active,
+                    'activeAt' => $course->active_at,
                 ]
             ]);
         } catch (Exception $e) {
