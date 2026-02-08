@@ -60,7 +60,8 @@ class AdminController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $user->role
+                    'role' => $user->role,
+                     'profile_image' => $user->profile_image ? asset($user->profile_image) : null,
                 ];
             });
 
