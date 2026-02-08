@@ -138,7 +138,7 @@ Route::middleware(['auth.api', 'admin'])->group(function () {
     Route::get('admin/consultations', [AdminController::class, 'getConsultations']);
     Route::post('admin/consultations/response', [AdminController::class, 'addConsultationResponse']);
     Route::get('admin/meetings', [AdminController::class, 'getMeetings']);
-
+    Route::post('admin/create-meet', [AdminController::class, 'createMeet']);
 });
 
 Route::get('/get/personal-information', [AuthController::class, 'getUser']);

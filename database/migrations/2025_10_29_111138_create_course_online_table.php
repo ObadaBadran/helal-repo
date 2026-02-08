@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -13,7 +12,7 @@ return new class extends Migration
     {
         Schema::create('course_online', function (Blueprint $table) {
             $table->id();
-             $table->string('name_en');
+            $table->string('name_en');
             $table->text('description_en');
             $table->string('name_ar');
             $table->text('description_ar');
@@ -23,7 +22,7 @@ return new class extends Migration
             // $table->dateTime('date');
             $table->string('cover_image')->nullable();
             $table->string('meet_url')->nullable();
-            $table->boolean('active')->default(false);
+            $table->date('active_at')->nullable();
             $table->timestamps();
         });
     }

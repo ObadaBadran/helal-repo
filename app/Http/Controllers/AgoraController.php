@@ -38,13 +38,6 @@ class AgoraController extends Controller
             $channelName = $request->channelName;
             $user = auth('api')->user();
 
-            if (!$user) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Unauthorized.'
-                ], 401);
-            }
-
             $uid = $user->id;
             $cacheKey = "agora_session_{$channelName}_{$uid}";
             $cachedSession = Cache::get($cacheKey);
@@ -283,12 +276,6 @@ public function getJoinData(Request $request, $channelName)
     public function muteUser(Request $request)
     {
         try {
-            $user = auth('api')->user();
-
-            if (!$user || $user->role !== 'admin') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
-
             $request->validate([
                 'channelName' => 'required|string',
                 'uid' => 'required|integer',
@@ -341,10 +328,6 @@ public function getJoinData(Request $request, $channelName)
     {
         try {
             $user = auth('api')->user();
-
-            if (!$user || $user->role !== 'admin') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
 
             $request->validate([
                 'channelName' => 'required|string',
@@ -406,12 +389,6 @@ public function getJoinData(Request $request, $channelName)
     public function kickUser(Request $request)
     {
         try {
-            $user = auth('api')->user();
-
-            if (!$user || $user->role !== 'admin') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
-
             $request->validate([
                 'channelName' => 'required|string',
                 'uid' => 'required|integer',
@@ -457,7 +434,7 @@ public function getJoinData(Request $request, $channelName)
             $user = auth('api')->user();
 
             if (!$user || $user->role !== 'user') {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
+                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 401);
             }
 
             $request->validate([
@@ -492,10 +469,6 @@ public function getJoinData(Request $request, $channelName)
     {
         try {
             $user = auth('api')->user();
-
-            if (!$user) {
-                return response()->json(['status' => false, 'message' => 'Unauthorized.'], 403);
-            }
 
             $request->validate([
                 'channelName' => 'required|string',
