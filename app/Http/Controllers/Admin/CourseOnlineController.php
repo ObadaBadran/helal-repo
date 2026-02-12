@@ -264,9 +264,9 @@ class CourseOnlineController extends Controller
 
             if ($request->has('active')) {
                 if ($active === true) {
-                    $courses = $courses->whereNotNull('active');
+                    $courses = $courses->whereNotNull('active_at');
                 } else {
-                    $courses = $courses->whereNull('active');
+                    $courses = $courses->whereNull('active_at');
                 }
             }
 
